@@ -7,7 +7,7 @@
 #				-created the levels-list with list-comprehensions
 
 
-import pygame, sys, random, copy, time, logging, pygInterface as pyI
+import pygame, sys, random, copy, time, logging, pygInterface as pyIF
 from pygame.locals import *
 
 
@@ -54,21 +54,22 @@ DOORINDENT = (int((BLOCKSIZE / WALLWIDTH) / 2) - 1) * WALLWIDTH
 #####################################################################
 # load the image files
 
-IMAGE_PATH = 'D:\\Bilder\\'
+IMAGE_PATH = './data/images/'
 
-IMG_NONE = pygame.image.load('D:\\Bilder\\NoneA.png')
-IMG_PLAYER_ROOM = pygame.image.load('D:\Bilder\\Hero15.png')
-IMG_PLAYER_HALLWAY = pygame.image.load('D:\Bilder\\Hero_Hallway1.png')
-IMG_LADDER_DOWN = pygame.image.load('D:\Bilder\LeiterAbwaerts.png')
-IMG_LADDER_UP =  pygame.image.load('D:\Bilder\LeiterAufwaerts.png')
-IMG_FOUNTAIN = pygame.image.load('D:\Bilder\Quelle.png')
-IMG_TREASURE = pygame.image.load('D:\Bilder\Schatz3.png')
-IMG_TEST = pygame.image.load('D:\Bilder\groesse.png')
-IMG_GHOST = pygame.image.load('D:\Bilder\Geist.png')
-IMG_IMP = pygame.image.load('D:\Bilder\KoboltA.png')
-IMG_IMPWARRIOR = pygame.image.load('D:\Bilder\KoboltB.png')
-IMG_SKELETON = pygame.image.load('D:\Bilder\Magic_effect3.png')
-IMG_ATTACKIMPACT = pygame.image.load('D:\Bilder\AttackPointA.png')
+IMG_NONE = pygame.image.load(IMAGE_PATH + '/NoneA.png')
+IMG_PLAYER_ROOM = pygame.image.load(IMAGE_PATH + '/Hero15.png')
+IMG_PLAYER_HALLWAY = pygame.image.load(IMAGE_PATH + '/Hero_Hallway1.png')
+IMG_LADDER_DOWN = pygame.image.load(IMAGE_PATH + '/LeiterAbwaerts.png')
+IMG_LADDER_UP =  pygame.image.load(IMAGE_PATH + '/LeiterAufwaerts.png')
+IMG_FOUNTAIN = pygame.image.load(IMAGE_PATH + '/Quelle.png')
+IMG_TREASURE = pygame.image.load(IMAGE_PATH + '/Schatz3.png')
+#IMG_TEST = pygame.image.load(IMAGE_PATH + '/groesse.png')
+#IMG_GHOST = pygame.image.load(IMAGE_PATH + '/Geist.png')
+IMG_IMP = pygame.image.load(IMAGE_PATH + '/KoboltA.png')
+IMG_IMPWARRIOR = pygame.image.load(IMAGE_PATH + '/KoboltB.png')
+IMG_MAGICEFFECT= pygame.image.load(IMAGE_PATH + '/Magic_effect3.png')
+IMG_SKELETON = pygame.image.load(IMAGE_PATH + '/Skelett1.png')
+IMG_ATTACKIMPACT = pygame.image.load(IMAGE_PATH + '/AttackPointA.png')
 
 
 ####################################################################
@@ -114,177 +115,178 @@ MISSINGROOMS = 2
 
 FPS = 30
 
-pygame.init()
-DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
-pygame.display.set_caption("extrema")
-FPSCLOCK = pygame.time.Clock()
+DISPLAYSURF, FPSCLOCK = pyIF.setupPygame()
+#pygame.init()
+#DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
+#pygame.display.set_caption("extrema")
+#FPSCLOCK = pygame.time.Clock()
 
 logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s- %(message)s')
 
 def main():
 	
-	####################################################################
-	# set up the game state variables
-	
-	moved = True
-	lvlchange = 0
-	mpo = 1		# movement priority order
-	actionMode = MOVING
-	direction = None
-	intendedDirection = False
-	objects = []		# objects in the players room
-	monsters = []		# monsters in the players room
-	roomfilled = True	# determines weather monster and objects are spawned in the current room
-	currentLevelNr = 0
-	
-	levels = [Level(levelnr, ROOMROWWIDTH, ROOMROWLENGTH, MISSINGROOMS) for levelnr in range(LEVELTALLY)]
-	level = levels[currentLevelNr]
-	level.create()
-	player = Hero(level.roomKlimb, level)
+    ####################################################################
+    # set up the game state variables
+    
+    moved = True
+    lvlchange = 0
+    mpo = 1		# movement priority order
+    actionMode = MOVING
+    direction = None
+    intendedDirection = False
+    objects = []		# objects in the players room
+    monsters = []		# monsters in the players room
+    roomfilled = True	# determines weather monster and objects are spawned in the current room
+    currentLevelNr = 0
+    
+    levels = [Level(levelnr, ROOMROWWIDTH, ROOMROWLENGTH, MISSINGROOMS) for levelnr in range(LEVELTALLY)]
+    level = levels[currentLevelNr]
+    level.create()
+    player = Hero(level.roomKlimb, level)
 	
 	
 ########################################################################
 ### the main game loop #################################################
 ########################################################################
 
-	while True:			
+    while True:			
 
 	########################################################################	
 	# update gamestate #####################################################
 	########################################################################
 
 
-		for event in pygame.event.get():
-			if event.type == QUIT:
-				terminate()
-			elif event.type == KEYDOWN:
-				if event.key == K_ESCAPE:
-					terminate()
-				elif event.key == K_UP:
-					direction = UP
-				elif event.key == K_DOWN:
-					direction = DOWN
-				elif event.key == K_RIGHT:
-					direction = RIGHT
-				elif event.key == K_LEFT:
-					direction = LEFT
-				elif event.key == K_SPACE:
-					moved = True
+        for event in pygame.event.get():
+                if event.type == QUIT:
+                        terminate()
+                elif event.type == KEYDOWN:
+                        if event.key == K_ESCAPE:
+                                terminate()
+                        elif event.key == K_UP:
+                                direction = UP
+                        elif event.key == K_DOWN:
+                                direction = DOWN
+                        elif event.key == K_RIGHT:
+                                direction = RIGHT
+                        elif event.key == K_LEFT:
+                                direction = LEFT
+                        elif event.key == K_SPACE:
+                                moved = True
+                        
+                        # player actions			
+                        elif event.key == K_a:
+                                actionMode = ATTACKING
+                        
+                        # TODO: after adding the create method to level-class-objects ship this code to function, in order to tidy up the main game loop
+                        # descent
+                        
+                        elif event.key in (K_d, K_k):
+                                if event.key == K_k:
+                                        entry = 'ladder_down'
+                                        ext = 'ladder_up'
+                                        lvlchange = -1
+                                elif event.key == K_d:
+                                        entry = 'ladder_up'
+                                        ext = 'ladder_down'
+                                        lvlchange = 1
+                                if (not (ext in player.room.attributeObjs)) or player.returnPosition() != player.room.attributeObjs[ext].returnPosition():
+                                        print('No ladder')
+                                else:
+                                        currentLevelNr += lvlchange
+                                        level = levels[currentLevelNr]
+                                        if not level.build:
+                                                level.create()
+                                        player.level = level	
+                                        player.room = [room for column in level.rooms for room in column if room and entry in room.attributeObjs][0]
+                                        player.positionX, player.positionY = player.room.attributeObjs[entry].returnPosition()		
+                
+                if direction and isPassable(player, direction, player.room):
+                        player.move(direction)
+                                        
+                                        
+                        direction = None
+                        moved = True
+                                
+                elif actionMode == ATTACKING:
+                        print('attack')
+                        actionMode = MOVING
+                
+                if moved:
+
+                        player.updatePositionalData()	# gets hallway moving options as well as the overall position when leaving a room
+
+                        #######################################################
+                        # spawning and deleting enemies and treasures when entering/leaving a room
+
+                        if player.room and not roomfilled:
+                                monsters = player.room.monsters
+                                roomfilled = True
+
+                        if not player.room and roomfilled:
+                                monsters = []
+                                roomfilled = False	 
+
+                        #######################################################
+                        # enemy AI
+
+                        for monster in monsters:
+                                if mpo == 1:
+                                        if monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
+                                                intendedDirection = UP
+                                        elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
+                                                intendedDirection = DOWN
+                                        elif monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
+                                                intendedDirection = RIGHT
+                                        elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
+                                                intendedDirection = LEFT		
+                                if mpo == 2:
+                                        if monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
+                                                intendedDirection = RIGHT
+                                        elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
+                                                intendedDirection = LEFT
+                                        elif monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
+                                                intendedDirection = UP
+                                        elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
+                                                intendedDirection = DOWN		
+                                
+                                if intendedDirection and isPassable(monster, intendedDirection, player.room):
+                                        monster.move(intendedDirection)
+                                intendedDirection = False
+                        mpo = count(mpo, 2)
+                                
+                                # TODO: make the AI circumvent obstacles without too mutch trial and error.
+                                
+                                # TODO: build a simple fighting AI
+                                
+                        moved = False
+                        if player.room:
+                                player.room.updateImpassableObjs()
+                                
+                        ###########################################################
+                        # space for console commentary
+                                
 				
-				# player actions			
-				elif event.key == K_a:
-					actionMode = ATTACKING
-				
-				# TODO: after adding the create method to level-class-objects ship this code to function, in order to tidy up the main game loop
-				# descent
-				
-				elif event.key in (K_d, K_k):
-					if event.key == K_k:
-						entry = 'ladder_down'
-						ext = 'ladder_up'
-						lvlchange = -1
-					elif event.key == K_d:
-						entry = 'ladder_up'
-						ext = 'ladder_down'
-						lvlchange = 1
-					if (not (ext in player.room.attributeObjs)) or player.returnPosition() != player.room.attributeObjs[ext].returnPosition():
-						print('No ladder')
-					else:
-						currentLevelNr += lvlchange
-						level = levels[currentLevelNr]
-						if not level.build:
-							level.create()
-						player.level = level	
-						player.room = [room for column in level.rooms for room in column if room and entry in room.attributeObjs][0]
-						player.positionX, player.positionY = player.room.attributeObjs[entry].returnPosition()		
-			
-			if direction and isPassable(player, direction, player.room):
-				player.move(direction)
-						
-						
-				direction = None
-				moved = True
-					
-			elif actionMode == ATTACKING:
-				print('attack')
-				actionMode = MOVING
-			
-			if moved:
-
-				player.updatePositionalData()	# gets hallway moving options as well as the overall position when leaving a room
-
-				#######################################################
-				# spawning and deleting enemies and treasures when entering/leaving a room
-
-				if player.room and not roomfilled:
-					monsters = player.room.monsters
-					roomfilled = True
-
-				if not player.room and roomfilled:
-					monsters = []
-					roomfilled = False	 
-
-				#######################################################
-				# enemy AI
-
-				for monster in monsters:
-					if mpo == 1:
-						if monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
-							intendedDirection = UP
-						elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
-							intendedDirection = DOWN
-						elif monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
-							intendedDirection = RIGHT
-						elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
-							intendedDirection = LEFT		
-					if mpo == 2:
-						if monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
-							intendedDirection = RIGHT
-						elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
-							intendedDirection = LEFT
-						elif monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
-							intendedDirection = UP
-						elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
-							intendedDirection = DOWN		
-					
-					if intendedDirection and isPassable(monster, intendedDirection, player.room):
-						monster.move(intendedDirection)
-					intendedDirection = False
-				mpo = count(mpo, 2)
-					
-					# TODO: make the AI circumvent obstacles without too mutch trial and error.
-					
-					# TODO: build a simple fighting AI
-					
-				moved = False
-				if player.room:
-					player.room.updateImpassableObjs()
-					
-				###########################################################
-				# space for console commentary
-					
-				
-		DISPLAYSURF.fill(BGCOLOR)
-		for hallway in level.hallways:
-			for i in range(len(hallway) - 2):
-				hallwayPartNr = i + 1
-				drawHallway(hallway[hallwayPartNr])
-		for i in range(level.roomRowWidth):
-			for room in level.rooms[i]:
-				if room:	# check weather there is a room to draw
-					room.drawRoom()
-					room.drawContent()	
-		for monster in monsters:
-			monster.draw()							
-		player.draw()		
-		pygame.display.update()
-		FPSCLOCK.tick(FPS)
+        DISPLAYSURF.fill(BGCOLOR)
+        for hallway in level.hallways:
+                for i in range(len(hallway) - 2):
+                        hallwayPartNr = i + 1
+                        drawHallway(hallway[hallwayPartNr])
+        for i in range(level.roomRowWidth):
+                for room in level.rooms[i]:
+                        if room:	# check weather there is a room to draw
+                            pyIF.drawRoom(room)
+                            pyIF.drawRoomContent(room)
+        for monster in monsters:
+            pyIF.drawGameObject(monster)
+        pyIF.drawGameObject(player)
+        pygame.display.update()
+        FPSCLOCK.tick(FPS)
 
 ########################################################################
 # main game loop end ###################################################
 ########################################################################				
 	
-	return
+    return
 
 
 ########################################################################
@@ -322,33 +324,7 @@ def drawHallway(hallwayPart):
 				pygame.draw.rect(DISPLAYSURF, GRAY, (blockCoordX, (hallwayPart[0][Y] - 1) * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE))
 
 
-def drawObject(x, y, xStandart, yStandart, img):
 
-	posX = (x + xStandart - 1) * BLOCKSIZE
-	posY = (y + yStandart - 1) * BLOCKSIZE
-	DISPLAYSURF.blit(img, (posX, posY))	
-
-
-def drawWalls(posx, posy, width, length):
-	
-	# get the pixel-coords for the start- and endpoints
-	outerEdgesLeftx = (posx - 1) * BLOCKSIZE + LINEDISTANCE
-	innerEdgesRightx = outerEdgesLeftx + (width - 1) * BLOCKSIZE
-	innerEdgesLeftx = (posx - 1) * BLOCKSIZE + LINEDISTANCE * 2
-	outerEdgesRightx = innerEdgesLeftx + (width - 1) * BLOCKSIZE
-	outerEdgesUpy = (posy - 1) * BLOCKSIZE + LINEDISTANCE
-	innerEdgesDowny = outerEdgesUpy + (length - 1) * BLOCKSIZE
-	innerEdgesUpy = (posy - 1) * BLOCKSIZE + LINEDISTANCE * 2
-	outerEdgesDowny = (innerEdgesUpy) + (length - 1) * BLOCKSIZE
-	# draw the room walls
-	pygame.draw.line(DISPLAYSURF, BROWN, (outerEdgesLeftx, outerEdgesUpy), (outerEdgesRightx, outerEdgesUpy), WALLWIDTH)
-	pygame.draw.line(DISPLAYSURF, BROWN, (innerEdgesLeftx, innerEdgesUpy), (innerEdgesRightx, innerEdgesUpy), WALLWIDTH)
-	pygame.draw.line(DISPLAYSURF, BROWN, (outerEdgesLeftx, outerEdgesDowny), (outerEdgesRightx, outerEdgesDowny), WALLWIDTH) 
-	pygame.draw.line(DISPLAYSURF, BROWN, (innerEdgesLeftx, innerEdgesDowny), (innerEdgesRightx, innerEdgesDowny), WALLWIDTH)
-	pygame.draw.line(DISPLAYSURF, BROWN, (outerEdgesLeftx, outerEdgesUpy), (outerEdgesLeftx, outerEdgesDowny), WALLWIDTH)
-	pygame.draw.line(DISPLAYSURF, BROWN, (innerEdgesLeftx, innerEdgesUpy), (innerEdgesLeftx, innerEdgesDowny), WALLWIDTH)
-	pygame.draw.line(DISPLAYSURF, BROWN, (innerEdgesRightx, innerEdgesUpy), (innerEdgesRightx, innerEdgesDowny), WALLWIDTH)
-	pygame.draw.line(DISPLAYSURF, BROWN, (outerEdgesRightx, outerEdgesUpy), (outerEdgesRightx, outerEdgesDowny), WALLWIDTH)
 
 
 def drawDoor(x, y, xstandart, ystandart, xmax, ymax):
@@ -455,29 +431,29 @@ def getCurrentHallway(hallways, position):
 		hallwayNr += 1
 
 
-def getHallwayMovingOptions(hallway, position):
+def getHallwayMovementOptions(hallway, position):
 	
-	movingOptions = {'up': False , 'down': False , 'left': False , 'right': False}
+	movementOptions = {'up': False , 'down': False , 'left': False , 'right': False}
 	for hallwayPart in hallway:
 		if hallwayPart[0] == position:
 			if hallwayPart[0][Y] > hallwayPart[1][Y]:
-				movingOptions['up'] = hallwayPart[1]
+				movementOptions['up'] = hallwayPart[1]
 			elif hallwayPart[0][Y] < hallwayPart[1][Y]:
-				movingOptions['down'] = hallwayPart[1]
+				movementOptions['down'] = hallwayPart[1]
 			elif hallwayPart[0][X] < hallwayPart[1][X]:
-				movingOptions['right'] = hallwayPart[1]
+				movementOptions['right'] = hallwayPart[1]
 			elif hallwayPart[0][X] > hallwayPart[1][X]:
-				movingOptions['left'] = hallwayPart[1]
+				movementOptions['left'] = hallwayPart[1]
 		if hallwayPart[1] == position:
 			if hallwayPart[1][Y] > hallwayPart[0][Y]:
-				movingOptions['up'] = hallwayPart[0]
+				movementOptions['up'] = hallwayPart[0]
 			elif hallwayPart[1][Y] < hallwayPart[0][Y]:
-				movingOptions['down'] = hallwayPart[0]
+				movementOptions['down'] = hallwayPart[0]
 			elif hallwayPart[1][X] < hallwayPart[0][X]:
-				movingOptions['right'] = hallwayPart[0]
+				movementOptions['right'] = hallwayPart[0]
 			elif hallwayPart[1][X] > hallwayPart[0][X]:
-				movingOptions['left'] = hallwayPart[0]
-	return movingOptions
+				movementOptions['left'] = hallwayPart[0]
+	return movementOptions
 
 
 def getRoomAtDoor(posX, posY, doors):
@@ -578,12 +554,6 @@ class Object:
 		
 		return self.positionX, self.positionY		
 		
-	def draw(self):
-		
-		if self.room:
-			drawObject(self.positionX, self.positionY, self.room.topLeftCornerX, self.room.topLeftCornerY, self.image)
-		else: # handling playermovement outside of rooms
-			drawObject(self.positionOverallX, self.positionOverallY, 0, 0, self.image)
 			
 	def __str__(self):
 		return ('%s Object at %s in room &s' % (self.__name__, str((self.positionX, self.positionY)), self.room))		
@@ -591,7 +561,7 @@ class Object:
 
 class Creature(Object):
 	
-	def __init__(self, name, rm, lp = 50, stg = 10, dex = 10, ma = 0, img = IMG_NONE):
+	def __init__(self, name, rm, lp = 50, stg = 10, dex = 10, ma = 0, img = IMG_SKELETON):
 		
 		Object.__init__(self, name, rm, img, False)
 		
@@ -634,7 +604,7 @@ class Hero(Creature):
 		self.positionOverallX = 0  # You start in a room so you  do
 		self.positionOverallY = 0  # not need an overall position.
 		self.currentHallway = None # same thing for the hallway
-		self.movingOptions = None  # and the movingoptions in a hallway.
+		self.movementOptions = None  # and the movingoptions in a hallway.
 		self.level = level
 		
 		self.weaponEquiped = Item('dagger', THRUST, 5, 1, 1)
@@ -649,20 +619,20 @@ class Hero(Creature):
 			
 		elif not self.room:		
 			if direction == UP:
-				if self.movingOptions['up']:
-					self.positionOverallX, self.positionOverallY = self.movingOptions['up']	
+				if self.movementOptions['up']:
+					self.positionOverallX, self.positionOverallY = self.movementOptions['up']	
 								
 			elif direction == DOWN:
-				if self.movingOptions['down']:
-					self.positionOverallX, self.positionOverallY = self.movingOptions['down']
+				if self.movementOptions['down']:
+					self.positionOverallX, self.positionOverallY = self.movementOptions['down']
 					
 			elif direction == RIGHT:
-				if self.movingOptions['right']:
-					self.positionOverallX, self.positionOverallY = self.movingOptions['right']
+				if self.movementOptions['right']:
+					self.positionOverallX, self.positionOverallY = self.movementOptions['right']
 					
 			elif direction == LEFT:
-				if self.movingOptions['left']:
-					self.positionOverallX, self.positionOverallY = self.movingOptions['left']
+				if self.movementOptions['left']:
+					self.positionOverallX, self.positionOverallY = self.movementOptions['left']
 	
 	##################################################################################
 	# change between room and hallwaysettings if needed
@@ -677,11 +647,11 @@ class Hero(Creature):
 			# leaving the room
 			self.room = False
 			self.currentHallway = getCurrentHallway(self.level.hallways, (self.positionOverallX, self.positionOverallY))
-			self.movingOptions = getHallwayMovingOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
+			self.movementOptions = getHallwayMovementOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
 			self.image = IMG_PLAYER_HALLWAY
 			
 		elif not self.room:
-			self.movingOptions = getHallwayMovingOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
+			self.movementOptions = getHallwayMovementOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
 			if isDoor((self.positionOverallX, self.positionOverallY), self.level.allDoors):			
 				rc = getRoomAtDoor(self.positionOverallX, self.positionOverallY, self.level.allDoors)
 				self.room = self.level.rooms[rc[X]][rc[Y]]
@@ -722,31 +692,6 @@ class Room:
 			if (obj.positionX, obj.positionY) == (coordX, coordY):
 				return obj
 	
-	#############################################################################
-	# the the room as well as anything within
-	
-	def drawRoom(self):
-		
-	# draw the walls 
-		drawWalls(self.topLeftCornerX, self.topLeftCornerY, self.width, self.length)
-	
-	# draw the floor
-		for row in range(self.topLeftCornerY + 1, self.topLeftCornerY + self.length - 1):
-			for field in range(self.topLeftCornerX + 1, self.topLeftCornerX +  self.width - 1):
-				drawField(field, row)
-	
-	# draw the doors
-		for door in self.doors:
-			drawDoor(door[0], door[1], self.topLeftCornerX, self.topLeftCornerY, self.width, self.length)		
-			
-	def drawContent(self):
-		
-		for obj in self.massObjs:
-			obj.draw()
-		for key in self.attributeObjs:
-			self.attributeObjs[key].draw()	
-		for monster in self.monsters:
-			monster.draw()
 			
 	def __str__(self):
 		return ('Room Object, x = %s, y = %s, length = %s, width = %s')	
