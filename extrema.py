@@ -7,7 +7,7 @@
 #				-created the levels-list with list-comprehensions
 
 
-import pygame, sys, random, copy, time, logging, pygInterface as pyIF
+import pygame, random, copy, time, logging, pygInterface as pyIF, utility as ut
 from pygame.locals import *
 
 
@@ -16,60 +16,9 @@ from pygame.locals import *
 #################################################################################
 
 
-####################################################################
-# colors
+LEVELHEIGHT = 30
+LEVELWIDTH = 40
 
-#				R   G   B
-WHITE		= (215,215,215)
-GRAY		= (128,128,128)
-BLACK   	= (  0,  0,  0)
-BLUE  		= (  0,  0,255)
-RED    	 	= (255,  0,  0)
-GREEN		= (  0,255,  0)
-BROWN       = (165, 42, 42)
-LIGHTGRAY   = (165,165,165)
-BGCOLOR = BLACK
-
-
-#####################################################################
-# set up the window
-
-WINDOWWIDTH = 1550
-WINDOWHEIGHT = 845
-BOARDHEIGHT = 40
-BOARDWIDTH = 55
-BLOCKSIZE = int(WINDOWHEIGHT / BOARDHEIGHT)
-
-
-#####################################################################
-# setting drawing- and size-standards
-
-WALLWIDTH = 2
-LINEDISTANCE = int(BLOCKSIZE / 3)
-FIELDRADIUS = int(BLOCKSIZE / 6)
-BODYSIZE = int(BLOCKSIZE / 5)
-DOORINDENT = (int((BLOCKSIZE / WALLWIDTH) / 2) - 1) * WALLWIDTH
-
-
-#####################################################################
-# load the image files
-
-IMAGE_PATH = './data/images/'
-
-IMG_NONE = pygame.image.load(IMAGE_PATH + '/NoneA.png')
-IMG_PLAYER_ROOM = pygame.image.load(IMAGE_PATH + '/Hero15.png')
-IMG_PLAYER_HALLWAY = pygame.image.load(IMAGE_PATH + '/Hero_Hallway1.png')
-IMG_LADDER_DOWN = pygame.image.load(IMAGE_PATH + '/LeiterAbwaerts.png')
-IMG_LADDER_UP =  pygame.image.load(IMAGE_PATH + '/LeiterAufwaerts.png')
-IMG_FOUNTAIN = pygame.image.load(IMAGE_PATH + '/Quelle.png')
-IMG_TREASURE = pygame.image.load(IMAGE_PATH + '/Schatz3.png')
-#IMG_TEST = pygame.image.load(IMAGE_PATH + '/groesse.png')
-#IMG_GHOST = pygame.image.load(IMAGE_PATH + '/Geist.png')
-IMG_IMP = pygame.image.load(IMAGE_PATH + '/KoboltA.png')
-IMG_IMPWARRIOR = pygame.image.load(IMAGE_PATH + '/KoboltB.png')
-IMG_MAGICEFFECT= pygame.image.load(IMAGE_PATH + '/Magic_effect3.png')
-IMG_SKELETON = pygame.image.load(IMAGE_PATH + '/Skelett1.png')
-IMG_ATTACKIMPACT = pygame.image.load(IMAGE_PATH + '/AttackPointA.png')
 
 
 ####################################################################
@@ -91,7 +40,7 @@ PERPENDICULAR = 'perpendidular'
 MOVING = 'moving'
 ATTACKING = 'attacking'
 
-X = 0   	# use it for tuples which
+X = 0       # use it for tuples which
 Y = 1		# contain x, y coordinates
 TUPEL = type(())
 DICT = type({})
@@ -110,16 +59,11 @@ LEVELTALLY = 9
 # will be redundent when there is more than one possible level per game
 ROOMROWWIDTH = 3
 ROOMROWLENGTH = 3
-ROOMRECT = (int(BOARDWIDTH / ROOMROWWIDTH), int(BOARDHEIGHT / ROOMROWLENGTH)) # area in which a room can be located 
+ROOMRECT = (int(LEVELWIDTH / ROOMROWWIDTH), int(LEVELHEIGHT / ROOMROWLENGTH)) # area in which a room can be located 
 MISSINGROOMS = 2
 
-FPS = 30
 
-DISPLAYSURF, FPSCLOCK = pyIF.setupPygame()
-#pygame.init()
-#DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
-#pygame.display.set_caption("extrema")
-#FPSCLOCK = pygame.time.Clock()
+pyIF.setupPygame()
 
 logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s- %(message)s')
 
@@ -149,7 +93,7 @@ def main():
 ### the main game loop #################################################
 ########################################################################
 
-    while True:			
+    while True:
 
 	########################################################################	
 	# update gamestate #####################################################
@@ -158,10 +102,10 @@ def main():
 
         for event in pygame.event.get():
                 if event.type == QUIT:
-                        terminate()
+                        pyIF.terminate()
                 elif event.type == KEYDOWN:
                         if event.key == K_ESCAPE:
-                                terminate()
+                                pyIF.terminate()
                         elif event.key == K_UP:
                                 direction = UP
                         elif event.key == K_DOWN:
@@ -172,14 +116,14 @@ def main():
                                 direction = LEFT
                         elif event.key == K_SPACE:
                                 moved = True
-                        
+
                         # player actions			
                         elif event.key == K_a:
                                 actionMode = ATTACKING
-                        
+
                         # TODO: after adding the create method to level-class-objects ship this code to function, in order to tidy up the main game loop
                         # descent
-                        
+
                         elif event.key in (K_d, K_k):
                                 if event.key == K_k:
                                         entry = 'ladder_down'
@@ -196,21 +140,21 @@ def main():
                                         level = levels[currentLevelNr]
                                         if not level.build:
                                                 level.create()
-                                        player.level = level	
+                                        player.level = level
                                         player.room = [room for column in level.rooms for room in column if room and entry in room.attributeObjs][0]
-                                        player.positionX, player.positionY = player.room.attributeObjs[entry].returnPosition()		
-                
+                                        player.positionX, player.positionY = player.room.attributeObjs[entry].returnPosition()
+
                 if direction and isPassable(player, direction, player.room):
                         player.move(direction)
-                                        
-                                        
+
+
                         direction = None
                         moved = True
-                                
+
                 elif actionMode == ATTACKING:
                         print('attack')
                         actionMode = MOVING
-                
+
                 if moved:
 
                         player.updatePositionalData()	# gets hallway moving options as well as the overall position when leaving a room
@@ -238,7 +182,7 @@ def main():
                                         elif monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
                                                 intendedDirection = RIGHT
                                         elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
-                                                intendedDirection = LEFT		
+                                                intendedDirection = LEFT
                                 if mpo == 2:
                                         if monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
                                                 intendedDirection = RIGHT
@@ -247,30 +191,29 @@ def main():
                                         elif monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
                                                 intendedDirection = UP
                                         elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
-                                                intendedDirection = DOWN		
-                                
+                                                intendedDirection = DOWN
+
                                 if intendedDirection and isPassable(monster, intendedDirection, player.room):
                                         monster.move(intendedDirection)
                                 intendedDirection = False
-                        mpo = count(mpo, 2)
-                                
+                        mpo = ut.count(mpo, 2)
+
                                 # TODO: make the AI circumvent obstacles without too mutch trial and error.
-                                
+
                                 # TODO: build a simple fighting AI
-                                
+
                         moved = False
                         if player.room:
                                 player.room.updateImpassableObjs()
-                                
+
                         ###########################################################
                         # space for console commentary
-                                
-				
-        DISPLAYSURF.fill(BGCOLOR)
+
+        pyIF.drawBackground()
         for hallway in level.hallways:
                 for i in range(len(hallway) - 2):
                         hallwayPartNr = i + 1
-                        drawHallway(hallway[hallwayPartNr])
+                        pyIF.drawHallway(hallway[hallwayPartNr])
         for i in range(level.roomRowWidth):
                 for room in level.rooms[i]:
                         if room:	# check weather there is a room to draw
@@ -279,77 +222,23 @@ def main():
         for monster in monsters:
             pyIF.drawGameObject(monster)
         pyIF.drawGameObject(player)
-        pygame.display.update()
-        FPSCLOCK.tick(FPS)
+        pyIF.endFrame()
 
 ########################################################################
 # main game loop end ###################################################
 ########################################################################				
-	
+
     return
 
 
-########################################################################
-# drawing functions
-
-
-def drawGrid():
-	
-	for line in range(0, WINDOWHEIGHT, BLOCKSIZE):
-		pygame.draw.line(DISPLAYSURF, WHITE, (0, line), (BLOCKSIZE * BOARDWIDTH, line)) # horizontally
-	for column in range(0, BLOCKSIZE * BOARDWIDTH + 1, BLOCKSIZE):
-		pygame.draw.line(DISPLAYSURF, WHITE, (column, 0), (column, WINDOWHEIGHT)) # perpendicularly
-
-
-def drawField(x, y):
-	
-	centerX = (x - 1) * BLOCKSIZE + int(BLOCKSIZE / 2)
-	centerY = (y - 1) * BLOCKSIZE + int(BLOCKSIZE / 2)
-	pygame.draw.circle(DISPLAYSURF, WHITE, (centerX, centerY), FIELDRADIUS, 1)
-
-
-def drawHallway(hallwayPart):
-	
-	if hallwayPart[0][X] == hallwayPart[1][X]:
-		differenceY = hallwayPart[0][Y] - hallwayPart[1][Y]		# the number of blocks the endpoints are away from each other
-		for blockY in range(abs(differenceY) + 1):
-			if differenceY != 0:
-				blockCoordY = (hallwayPart[0][Y] + (blockY * (differenceY / abs(differenceY))) * -1 - 1) * BLOCKSIZE
-				pygame.draw.rect(DISPLAYSURF, GRAY, ((hallwayPart[0][X] - 1) * BLOCKSIZE, blockCoordY, BLOCKSIZE, BLOCKSIZE))
-	elif hallwayPart[0][Y] == hallwayPart[1][Y]:
-		differenceX = hallwayPart[0][X] - hallwayPart[1][X]		# the number of block the endpoints are away from each other
-		for blockX in range(abs(differenceX) + 1):
-			if differenceX != 0:
-				blockCoordX = (hallwayPart[0][X] + (blockX * (differenceX / abs(differenceX))) * -1 - 1) * BLOCKSIZE	
-				pygame.draw.rect(DISPLAYSURF, GRAY, (blockCoordX, (hallwayPart[0][Y] - 1) * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE))
 
 
 
 
-
-def drawDoor(x, y, xstandart, ystandart, xmax, ymax):
-	
-	if x == xmax - 1 or x == 0:
-		xCoord = (x + xstandart - 1) * BLOCKSIZE
-		yCoord = (y + ystandart - 1) * BLOCKSIZE + DOORINDENT
-		pygame.draw.line(DISPLAYSURF, BROWN, (xCoord, yCoord), (xCoord + BLOCKSIZE, yCoord), WALLWIDTH)
-		yCoord += WALLWIDTH
-		pygame.draw.line(DISPLAYSURF, BGCOLOR, (xCoord, yCoord), (xCoord + BLOCKSIZE, yCoord), WALLWIDTH)
-		yCoord += WALLWIDTH
-		pygame.draw.line(DISPLAYSURF, BROWN, (xCoord, yCoord), (xCoord + BLOCKSIZE, yCoord), WALLWIDTH)
-
-	if y == ymax - 1 or y == 0:
-		xCoord = (x + xstandart - 1) * BLOCKSIZE + DOORINDENT
-		yCoord = (y + ystandart - 1) * BLOCKSIZE
-		pygame.draw.line(DISPLAYSURF, BROWN, (xCoord, yCoord), (xCoord, yCoord + BLOCKSIZE), WALLWIDTH)		
-		xCoord += WALLWIDTH
-		pygame.draw.line(DISPLAYSURF, BGCOLOR, (xCoord, yCoord), (xCoord, yCoord + BLOCKSIZE), WALLWIDTH)
-		xCoord += WALLWIDTH
-		pygame.draw.line(DISPLAYSURF, BROWN, (xCoord, yCoord), (xCoord, yCoord + BLOCKSIZE), WALLWIDTH)	
 
 
 def getOppositeDirection(direction):
-	
+
 	if direction == RIGHT:
 		return LEFT
 	elif direction == LEFT:
@@ -361,7 +250,7 @@ def getOppositeDirection(direction):
 
 
 def getDoorPairs(doorList):
-	
+
 	doorPairs = []
 	addPair = False # shows wether two are a pair
 	for door in doorList:
@@ -394,39 +283,23 @@ def isDoor(pp, doors):
 		for door in doors:
 			if door[X] == pp[X] and door[Y] == pp[Y]:
 				return True
-				
+
 	elif type(doors[0]) == DICT:
 		for door in doors:
 			if door['x'] + door['roomx'] == pp[X] and door['y'] + door['roomy'] == pp[Y]:
 				return True				
-						
-				
-def getNextField(direct, posx, posy):
-	
-	if direct == RIGHT:
-		return posx + 1, posy		
-	elif direct == LEFT:
-		return posx - 1, posy
-	elif direct == UP:
-		return posx, posy - 1
-	elif direct == DOWN:
-		return posx, posy + 1
-		
-		
-def isClamped(value, vmax, vmin):
-	
-	if value != vmax and value != vmin:
-		return True						
+
+
 
 
 def getCurrentHallway(hallways, position):
-	
+
 	hallwayNr = 0
 	for hallway in hallways:
 		hallwayPartNr = 0
 		for hallwayPart in hallway:
 			if hallwayPart[0] == position or hallwayPart[1] == position:
-				return hallways[hallwayNr]				
+				return hallways[hallwayNr]
 			hallwayPartNr += 1
 		hallwayNr += 1
 
@@ -490,28 +363,8 @@ def isPassable(obj, direction, rm):
 		return True
 
 
-def instantiate(obj):
-	
-	return copy.deepcopy(obj)
 	
 
-def shuffle(_list):
-	random.shuffle(_list)			
-	return _list
-
-def terminate():
-	
-	pygame.quit()
-	sys.exit()
-
-
-def count(nr, nr_max):
-	
-	if nr == nr_max:
-		nr = 1
-	else:	
-		nr += 1
-	return nr	
 
 
 #############################################################################
@@ -561,7 +414,7 @@ class Object:
 
 class Creature(Object):
 	
-	def __init__(self, name, rm, lp = 50, stg = 10, dex = 10, ma = 0, img = IMG_SKELETON):
+	def __init__(self, name, rm, lp = 50, stg = 10, dex = 10, ma = 0, img = pyIF.IMG_SKELETON):
 		
 		Object.__init__(self, name, rm, img, False)
 		
@@ -578,10 +431,10 @@ class Creature(Object):
 	def move(self, direction):
 		
 		# look where the next field lies, then look wether you can go there
-		nextField = getNextField(direction, self.positionX, self.positionY) 
+		nextField = ut.getNextField(direction, self.positionX, self.positionY) 
 		
-		if (isClamped(nextField[X], self.room.width - 1, 0) and isClamped(nextField[Y], self.room.length - 1, 0)) or isDoor(nextField, self.room.doors):
-			self.positionX, self.positionY = getNextField(direction, self.positionX, self.positionY)
+		if (ut.isClamped(nextField[X], self.room.width - 1, 0) and ut.isClamped(nextField[Y], self.room.length - 1, 0)) or isDoor(nextField, self.room.doors):
+			self.positionX, self.positionY = ut.getNextField(direction, self.positionX, self.positionY)
 			
 
 	def attack(self, direction):
@@ -596,7 +449,7 @@ class Creature(Object):
 
 class Hero(Creature):
 	
-	def __init__(self, rm, level, name = 'player', lp = 100, stg = 20, dex = 20, ma = 0, img = IMG_PLAYER_ROOM): # constructor 
+	def __init__(self, rm, level, name = 'player', lp = 100, stg = 20, dex = 20, ma = 0, img = pyIF.IMG_PLAYER_ROOM): # constructor 
 
 		Creature.__init__(self, name, rm, lp, stg, dex, ma, img)
 
@@ -621,7 +474,7 @@ class Hero(Creature):
 			if direction == UP:
 				if self.movementOptions['up']:
 					self.positionOverallX, self.positionOverallY = self.movementOptions['up']	
-								
+
 			elif direction == DOWN:
 				if self.movementOptions['down']:
 					self.positionOverallX, self.positionOverallY = self.movementOptions['down']
@@ -648,7 +501,7 @@ class Hero(Creature):
 			self.room = False
 			self.currentHallway = getCurrentHallway(self.level.hallways, (self.positionOverallX, self.positionOverallY))
 			self.movementOptions = getHallwayMovementOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
-			self.image = IMG_PLAYER_HALLWAY
+			self.image = pyIF.IMG_PLAYER_HALLWAY
 			
 		elif not self.room:
 			self.movementOptions = getHallwayMovementOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
@@ -656,7 +509,7 @@ class Hero(Creature):
 				rc = getRoomAtDoor(self.positionOverallX, self.positionOverallY, self.level.allDoors)
 				self.room = self.level.rooms[rc[X]][rc[Y]]
 				self.positionX, self.positionY = (self.positionOverallX - self.room.topLeftCornerX, self.positionOverallY - self.room.topLeftCornerY)
-				self.image = IMG_PLAYER_ROOM
+				self.image = pyIF.IMG_PLAYER_ROOM
 				self.currentHallway = []
 
 
@@ -705,7 +558,7 @@ class Level:
 		self.roomRowWidth = rowWidth
 		self.roomRowLength = rowLength
 		self.missingRooms = missingRooms
-		self.roomRect = (int(BOARDWIDTH / self.roomRowWidth), int(BOARDHEIGHT / self.roomRowLength))
+		self.roomRect = (int(LEVELWIDTH / self.roomRowWidth), int(LEVELHEIGHT / self.roomRowLength))
 		self.roomtally = 0
 		
 		self.allRooms = None
@@ -719,7 +572,7 @@ class Level:
 		
 		self.build = False	# the actual levelproperties aren't created in the initializer but in an extra funktion.
 							# The 'build'-attribute determines weather this function has already been called on the levelobject.
-							
+
 
 	def create(self):
 		# TODO: build a new level from scratch based on the code on the beginning of the main game loop.
@@ -743,13 +596,13 @@ class Level:
 			xNumber = random.randint(0, self.roomRowWidth - 1)
 			yNumber = random.randint(0, self.roomRowLength - 1)
 			self.rooms[xNumber][yNumber] = False
-			
+
 		# counting the number of rooms 
 		for column in self.rooms:
 			for room in column:
 				if room:
-					self.roomtally += 1				
-					
+					self.roomtally += 1
+
 		###################################################################################
 		# place doors where doors are needed and store there coordinates
 
@@ -801,7 +654,7 @@ class Level:
 							doorNr += 1
 				roomRectY += 1
 			roomRectX += 1		
-				
+
 		###################################################################################################
 		# Create Hallways
 		allDoorsCopy = copy.deepcopy(self.allDoors)
@@ -846,11 +699,11 @@ class Level:
 				((xCoordIndent1, yCoordMiddle), (xCoordIndent2, yCoordMiddle)), 
 				((xCoordIndent2, yCoordMiddle), (xCoordIndent2, yCoordIndent2)),
 				((xCoordDoor2, yCoordDoor2), (xCoordIndent2, yCoordIndent2))))
-							
-				
+
+
 		####################################################################################
 		# Set up the player, monsters and other things in the rooms 		
-						
+
 		# give the hereo a room to start
 		for column in self.rooms:
 			for room in column:
@@ -859,7 +712,7 @@ class Level:
 					break
 
 		# put objects and enemies into rooms
-		possibleContent = shuffle(['start', 'exit', 'heaven'] + ['treasure' for i in range(self.roomtally - 3)])
+		possibleContent = ut.shuffle(['start', 'exit', 'heaven'] + ['treasure' for i in range(self.roomtally - 3)])
 		self.possibleContent = (item for item in possibleContent)
 		for column in self.rooms:
 			for room in column:
@@ -867,26 +720,26 @@ class Level:
 					item = next(self.possibleContent)
 					if item == 'start':
 						if self.nr > 0:
-							room.attributeObjs['ladder_up'] = Object(LADDER_UP, room, IMG_LADDER_UP)
+							room.attributeObjs['ladder_up'] = Object(LADDER_UP, room, pyIF.IMG_LADDER_UP)
 						self.roomKlimb = room
 					elif item == 'exit' and self.nr < LEVELTALLY - 1:
-						room.attributeObjs['ladder_down'] = Object(LADDER_DOWN, room, IMG_LADDER_DOWN)
+						room.attributeObjs['ladder_down'] = Object(LADDER_DOWN, room, pyIF.IMG_LADDER_DOWN)
 						self.roomDescent = room
 					elif item == 'heaven':
-						room.attributeObjs['fountain'] = Object(FOUNTAIN, room, IMG_FOUNTAIN)
+						room.attributeObjs['fountain'] = Object(FOUNTAIN, room, pyIF.IMG_FOUNTAIN)
 					elif item == 'treasure':
-						room.massObjs.append(Object(TREASURE, room, IMG_TREASURE))
+						room.massObjs.append(Object(TREASURE, room, pyIF.IMG_TREASURE))
 					if not item in ['start', 'exit', 'heaven']:
 						room.monsters.append(Creature("Goblin", room))
 			
 		# finish the level
 		self.build = True
 	
-									
+
 	def dismantle(self): 
 		# TODO: save the level's state in the least amount of data possible.
 		pass							
-							
+
 	def build(self):
 		# TODO: rebuild a saved level.
 		pass
