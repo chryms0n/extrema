@@ -7,8 +7,9 @@
 #				-created the levels-list with list-comprehensions
 
 
-import pygame, random, copy, time, logging, pygInterface as pyIF, utility as ut
+import pygame, random, copy, time, logging, pygInterface as pyIF, utility as util
 from pygame.locals import *
+from utility import pos
 
 
 #################################################################################
@@ -29,11 +30,12 @@ LADDER_UP = 'ladder_up'
 FOUNTAIN = 'fountain'
 TREASURE = 'treasure'
 
-UP = 'up'
-DOWN = 'down'
-LEFT = 'left'
-RIGHT = 'right'
-NONE = 'none'
+UP = 1
+DOWN = 3
+LEFT = 2
+RIGHT = 0
+NONE = None
+DIRECTIONS = [RIGHT, UP, LEFT, DOWN]
 HORIZONTALLY = 'horizontally'
 PERPENDICULAR = 'perpendidular'
 
@@ -68,185 +70,171 @@ pyIF.setupPygame()
 logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s- %(message)s')
 
 def main():
-	
-    ####################################################################
-    # set up the game state variables
-    
-    moved = True
-    lvlchange = 0
-    mpo = 1		# movement priority order
-    actionMode = MOVING
-    direction = None
-    intendedDirection = False
-    objects = []		# objects in the players room
-    monsters = []		# monsters in the players room
-    roomfilled = True	# determines weather monster and objects are spawned in the current room
-    currentLevelNr = 0
-    
-    levels = [Level(levelnr, ROOMROWWIDTH, ROOMROWLENGTH, MISSINGROOMS) for levelnr in range(LEVELTALLY)]
-    level = levels[currentLevelNr]
-    level.create()
-    player = Hero(level.roomKlimb, level)
-	
-	
+
+	####################################################################
+	# set up the game state variables
+
+	moved = True
+	lvlchange = 0
+	mpo = 1		# movement priority order
+	actionMode = MOVING
+	direction = None
+	intendedDirection = False
+	objects = []		# objects in the players room
+	monsters = []		# monsters in the players room
+	roomfilled = True	# determines weather monster and objects are spawned in the current room
+	currentLevelNr = 0
+
+	levels = [Level(levelnr, ROOMROWWIDTH, ROOMROWLENGTH, MISSINGROOMS) for levelnr in range(LEVELTALLY)]
+	level = levels[currentLevelNr]
+	level.create()
+	player = Hero(level.roomKlimb, level)
+
+
 ########################################################################
 ### the main game loop #################################################
 ########################################################################
 
-    while True:
+	while True:
 
-	########################################################################	
-	# update gamestate #####################################################
-	########################################################################
-
-
-        for event in pygame.event.get():
-                if event.type == QUIT:
-                        pyIF.terminate()
-                elif event.type == KEYDOWN:
-                        if event.key == K_ESCAPE:
-                                pyIF.terminate()
-                        elif event.key == K_UP:
-                                direction = UP
-                        elif event.key == K_DOWN:
-                                direction = DOWN
-                        elif event.key == K_RIGHT:
-                                direction = RIGHT
-                        elif event.key == K_LEFT:
-                                direction = LEFT
-                        elif event.key == K_SPACE:
-                                moved = True
-
-                        # player actions			
-                        elif event.key == K_a:
-                                actionMode = ATTACKING
-
-                        # TODO: after adding the create method to level-class-objects ship this code to function, in order to tidy up the main game loop
-                        # descent
-
-                        elif event.key in (K_d, K_k):
-                                if event.key == K_k:
-                                        entry = 'ladder_down'
-                                        ext = 'ladder_up'
-                                        lvlchange = -1
-                                elif event.key == K_d:
-                                        entry = 'ladder_up'
-                                        ext = 'ladder_down'
-                                        lvlchange = 1
-                                if (not (ext in player.room.attributeObjs)) or player.returnPosition() != player.room.attributeObjs[ext].returnPosition():
-                                        print('No ladder')
-                                else:
-                                        currentLevelNr += lvlchange
-                                        level = levels[currentLevelNr]
-                                        if not level.build:
-                                                level.create()
-                                        player.level = level
-                                        player.room = [room for column in level.rooms for room in column if room and entry in room.attributeObjs][0]
-                                        player.positionX, player.positionY = player.room.attributeObjs[entry].returnPosition()
-
-                if direction and isPassable(player, direction, player.room):
-                        player.move(direction)
+		########################################################################	
+		# update gamestate #####################################################
+		########################################################################
 
 
-                        direction = None
-                        moved = True
+		for event in pygame.event.get():
+			if event.type == QUIT:
+					pyIF.terminate()
+			elif event.type == KEYDOWN:
+				if event.key == K_ESCAPE:
+						pyIF.terminate()
+				elif event.key == K_UP:
+						direction = UP
+				elif event.key == K_DOWN:
+						direction = DOWN
+				elif event.key == K_RIGHT:
+						direction = RIGHT
+				elif event.key == K_LEFT:
+						direction = LEFT
+				elif event.key == K_SPACE:
+						moved = True
 
-                elif actionMode == ATTACKING:
-                        print('attack')
-                        actionMode = MOVING
+				# player actions			
+				elif event.key == K_a:
+						actionMode = ATTACKING
 
-                if moved:
+				# TODO: after adding the create method to level-class-objects ship this code to function, in order to tidy up the main game loop
+				# descent
 
-                        player.updatePositionalData()	# gets hallway moving options as well as the overall position when leaving a room
+				elif event.key in (K_d, K_k):
+					if event.key == K_k:
+							entry = 'ladder_down'
+							ext = 'ladder_up'
+							lvlchange = -1
+					elif event.key == K_d:
+							entry = 'ladder_up'
+							ext = 'ladder_down'
+							lvlchange = 1
+					if (not (ext in player.room.attributeObjs)) or player.returnpos() != player.room.attributeObjs[ext].returnpos():
+							print('No ladder')
+					else:
+							currentLevelNr += lvlchange
+							level = levels[currentLevelNr]
+							if not level.build:
+									level.create()
+							player.level = level
+							player.room = [room for column in level.rooms for room in column if room and entry in room.attributeObjs][0]
+							player.positionX, player.positionY = player.room.attributeObjs[entry].returnpos()
 
-                        #######################################################
-                        # spawning and deleting enemies and treasures when entering/leaving a room
+				if direction != NONE and isPassable(player, direction, player.room):
+					player.move(direction)
 
-                        if player.room and not roomfilled:
-                                monsters = player.room.monsters
-                                roomfilled = True
 
-                        if not player.room and roomfilled:
-                                monsters = []
-                                roomfilled = False	 
+					direction = None
+					moved = True
 
-                        #######################################################
-                        # enemy AI
+				elif actionMode == ATTACKING:
+					print('attack')
+					actionMode = MOVING
 
-                        for monster in monsters:
-                                if mpo == 1:
-                                        if monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
-                                                intendedDirection = UP
-                                        elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
-                                                intendedDirection = DOWN
-                                        elif monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
-                                                intendedDirection = RIGHT
-                                        elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
-                                                intendedDirection = LEFT
-                                if mpo == 2:
-                                        if monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
-                                                intendedDirection = RIGHT
-                                        elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
-                                                intendedDirection = LEFT
-                                        elif monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
-                                                intendedDirection = UP
-                                        elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
-                                                intendedDirection = DOWN
+				if moved:
 
-                                if intendedDirection and isPassable(monster, intendedDirection, player.room):
-                                        monster.move(intendedDirection)
-                                intendedDirection = False
-                        mpo = ut.count(mpo, 2)
+					player.updatePositionalData()	# gets hallway moving options as well as the overall position when leaving a room
 
-                                # TODO: make the AI circumvent obstacles without too mutch trial and error.
+					#######################################################
+					# spawning and deleting enemies and treasures when entering/leaving a room
 
-                                # TODO: build a simple fighting AI
+					if player.room and not roomfilled:
+							monsters = player.room.monsters
+							roomfilled = True
 
-                        moved = False
-                        if player.room:
-                                player.room.updateImpassableObjs()
+					if not player.room and roomfilled:
+							monsters = []
+							roomfilled = False
 
-                        ###########################################################
-                        # space for console commentary
+					#######################################################
+					# enemy AI
 
-        pyIF.drawBackground()
-        for hallway in level.hallways:
-                for i in range(len(hallway) - 2):
-                        hallwayPartNr = i + 1
-                        pyIF.drawHallway(hallway[hallwayPartNr])
-        for i in range(level.roomRowWidth):
-                for room in level.rooms[i]:
-                        if room:	# check weather there is a room to draw
-                            pyIF.drawRoom(room)
-                            pyIF.drawRoomContent(room)
-        for monster in monsters:
-            pyIF.drawGameObject(monster)
-        pyIF.drawGameObject(player)
-        pyIF.endFrame()
+					for monster in monsters:
+						if mpo == 1:
+								if monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
+										intendedDirection = UP
+								elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
+										intendedDirection = DOWN
+								elif monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
+										intendedDirection = RIGHT
+								elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
+										intendedDirection = LEFT
+						if mpo == 2:
+								if monster.positionX < player.positionX - 1 or (monster.positionX < player.positionX and monster.positionY != player.positionY):
+										intendedDirection = RIGHT
+								elif monster.positionX > player.positionX + 1 or (monster.positionX > player.positionX and monster.positionY != player.positionY):
+										intendedDirection = LEFT
+								elif monster.positionY > player.positionY + 1 or (monster.positionY > player.positionY and monster.positionX != player.positionX):
+										intendedDirection = UP
+								elif monster.positionY < player.positionY - 1 or (monster.positionY < player.positionY and monster.positionX != player.positionX):
+										intendedDirection = DOWN
+
+						if intendedDirection and isPassable(monster, intendedDirection, player.room):
+								monster.move(intendedDirection)
+						intendedDirection = False
+					mpo = util.count(mpo, 2)
+
+							# TODO: make the AI circumvent obstacles withoutil.too mutil.h trial and error.
+
+							# TODO: build a simple fighting AI
+
+					moved = False
+					if player.room:
+							player.room.updateImpassableObjs()
+
+					###########################################################
+					# space for console commentary
+
+		pyIF.drawBackground()
+		pyIF.drawGrid()
+		for hallway in level.hallways:
+				for i in range(len(hallway) - 2):
+						hallwayPartNr = i + 1
+						pyIF.drawHallway(hallway[hallwayPartNr])
+		for i in range(level.roomRowWidth):
+				for room in level.rooms[i]:
+						if room:	# check weather there is a room to draw
+							pyIF.drawRoom(room)
+							pyIF.drawRoomContent(room)
+		for monster in monsters:
+			pyIF.drawGameObject(monster)
+		pyIF.drawGameObject(player)
+		pyIF.endFrame()
 
 ########################################################################
 # main game loop end ###################################################
 ########################################################################				
 
-    return
+	return
 
 
 
-
-
-
-
-
-def getOppositeDirection(direction):
-
-	if direction == RIGHT:
-		return LEFT
-	elif direction == LEFT:
-		return RIGHT
-	elif direction == UP:
-		return DOWN
-	elif direction == DOWN:
-		return UP
 
 
 def getDoorPairs(doorList):
@@ -256,38 +244,33 @@ def getDoorPairs(doorList):
 	for door in doorList:
 		otherDoorNr = 0
 		for otherDoor in doorList:
-			if door['direction'] == RIGHT:
-				if otherDoor['direction'] == LEFT and otherDoor['rectx'] == door['rectx'] + 1 and otherDoor['recty'] == door['recty']:
-					addPair = True
-			elif door['direction'] == LEFT:
-				if otherDoor['direction'] == RIGHT and otherDoor['rectx'] == door['rectx'] - 1 and otherDoor['recty'] == door['recty']:
-					addPair = True
-			elif door['direction'] == UP:
-				if otherDoor['direction'] == DOWN and otherDoor['rectx'] == door['rectx'] and otherDoor['recty'] == door['recty'] - 1:
-					addPair = True
-			elif door['direction'] == DOWN:
-				if otherDoor['direction'] == UP and otherDoor['rectx'] == door['rectx'] and otherDoor['recty'] == door['recty'] + 1:
-					addPair = True
+			directionVec = util.toPosition(door['direction'])
+			if otherDoor['direction'] == util.getOppositeDirection(door['direction']) and otherDoor['roomRectPos'] == door['roomRectPos'] + directionVec:
+				addPair = True
 			if addPair:
 				doorPairs.append((door, otherDoor))
 				del doorList[otherDoorNr]	# delete the second door so it cannot be paired with the first one again.
 				addPair = False
 				break
-			otherDoorNr += 1	
-	return doorPairs	
+			otherDoorNr += 1
+	return doorPairs
 
 
-def isDoor(pp, doors):
-	
-	if type(doors[0]) == TUPEL:
-		for door in doors:
-			if door[X] == pp[X] and door[Y] == pp[Y]:
-				return True
+def isDoor(position, doors):
 
-	elif type(doors[0]) == DICT:
-		for door in doors:
-			if door['x'] + door['roomx'] == pp[X] and door['y'] + door['roomy'] == pp[Y]:
-				return True				
+        if type(doors[0]) == TUPEL:
+                for door in doors:
+                        if door[X] == position[X] and door[Y] == position[Y]:
+                                return True
+
+        elif type(doors[0]) == DICT:
+                for door in doors:
+                        if door['x'] + door['roomx'] == position[X] and door['y'] + door['roomy'] == position[Y]:
+                                return True
+        else:
+            for door in doors:
+                if door == position:
+                    return True
 
 
 
@@ -305,56 +288,41 @@ def getCurrentHallway(hallways, position):
 
 
 def getHallwayMovementOptions(hallway, position):
-	
-	movementOptions = {'up': False , 'down': False , 'left': False , 'right': False}
+
+	movementOptions = {UP: False , DOWN: False , LEFT: False , RIGHT: False}
 	for hallwayPart in hallway:
-		if hallwayPart[0] == position:
+		if hallwayPart[0] == position.x:
 			if hallwayPart[0][Y] > hallwayPart[1][Y]:
-				movementOptions['up'] = hallwayPart[1]
+				movementOptions[UP] = hallwayPart[1]
 			elif hallwayPart[0][Y] < hallwayPart[1][Y]:
-				movementOptions['down'] = hallwayPart[1]
+				movementOptions[DOWN] = hallwayPart[1]
 			elif hallwayPart[0][X] < hallwayPart[1][X]:
-				movementOptions['right'] = hallwayPart[1]
+				movementOptions[RIGHT] = hallwayPart[1]
 			elif hallwayPart[0][X] > hallwayPart[1][X]:
-				movementOptions['left'] = hallwayPart[1]
-		if hallwayPart[1] == position:
+				movementOptions[LEFT] = hallwayPart[1]
+		if hallwayPart[1] == position.y:
 			if hallwayPart[1][Y] > hallwayPart[0][Y]:
-				movementOptions['up'] = hallwayPart[0]
+				movementOptions[UP] = hallwayPart[0]
 			elif hallwayPart[1][Y] < hallwayPart[0][Y]:
-				movementOptions['down'] = hallwayPart[0]
+				movementOptions[DOWN] = hallwayPart[0]
 			elif hallwayPart[1][X] < hallwayPart[0][X]:
-				movementOptions['right'] = hallwayPart[0]
+				movementOptions[RIGHT] = hallwayPart[0]
 			elif hallwayPart[1][X] > hallwayPart[0][X]:
-				movementOptions['left'] = hallwayPart[0]
+				movementOptions[LEFT] = hallwayPart[0]
 	return movementOptions
 
 
-def getRoomAtDoor(posX, posY, doors):
-	
+def getRoomAtDoor(pos, doors):
+
 	for door in doors:
-		if door['x'] + door['roomx'] == posX and door['y'] + door['roomy'] == posY:
-			return door['rectx'], door['recty']
-		elif door['x'] + door['roomx'] == posX and door['y'] + door['roomy'] == posY:
-			return door['rectx'], door['recty']
-		elif door['y'] + door['roomy'] == posY and door['x']+ door['roomx']  == posX:
-			return door['rectx'], door['recty']
-		elif door['y'] + door['roomy'] == posY and door['x']+ door['roomx']  == posX:
-			return door['rectx'], door['recty']
-		elif door['x'] + door['roomx'] == posX and door['y'] + door['roomy'] == posY:
-			return door['rectx'], door['recty']
-			
-			
+		if door['pos'] + door['roomPos'] == pos:
+			return door['roomRectPos']
+
+
 def isPassable(obj, direction, rm):
 
 	if rm:
-		if direction == UP:
-			nextField = (obj.positionX, obj.positionY - 1)
-		elif direction == DOWN:
-			nextField = (obj.positionX, obj.positionY + 1)
-		elif direction == RIGHT:
-			nextField = (obj.positionX + 1, obj.positionY)
-		elif direction == LEFT:
-			nextField = (obj.positionX - 1, obj.positionY)
+		nextField = util.getNextField(direction, obj.position)
 		if nextField in rm.impassableObjs:
 			return False
 		else:
@@ -363,7 +331,7 @@ def isPassable(obj, direction, rm):
 		return True
 
 
-	
+
 
 
 
@@ -373,9 +341,9 @@ def isPassable(obj, direction, rm):
 
 
 class Item:
-	
+
 	def __init__(self, name, dmgtype, dmg, reachMin, reachMax):
-		
+
 		self.name = name
 		self.damagetype = dmgtype
 		self.damage = dmg
@@ -384,367 +352,306 @@ class Item:
 
 
 class Object:
-	
+
 	def __init__(self, name, rm, img, moa = True):
-		
+
 		self.name = name
 		self.image = img
-		
-		self.room = rm	
-		self.positionX = random.randint(1, self.room.width - 2)
-		self.positionY = random.randint(1, self.room.length - 2)
-		
+
+		self.room = rm
+		self.position = pos(random.randint(1, self.room.width - 2), random.randint(1, self.room.length - 2))
+
 		self.moveable = moa # determines weather you can just walk over the object
-		
+
 		self.inventory = [] # things that get dropped when dying or getting used
-		
-	def replaceInRoom(self):
-		
-		self.positionX = random.randint(1, self.room.width - 2)
-		self.positionY = random.randint(1, self.room.length - 2)
-		
-	def returnPosition(self):
-		
-		return self.positionX, self.positionY		
-		
-			
+
+	def returnpos(self):
+
+		return self.position
+
+
 	def __str__(self):
-		return ('%s Object at %s in room &s' % (self.__name__, str((self.positionX, self.positionY)), self.room))		
+		return ('%s Object at %s in room &s' % (self.__name__, self.position, self.room))
 
 
 class Creature(Object):
-	
-	def __init__(self, name, rm, lp = 50, stg = 10, dex = 10, ma = 0, img = pyIF.IMG_SKELETON):
-		
-		Object.__init__(self, name, rm, img, False)
-		
-		# player stats	
-		self.strength = stg ## 0176 9787 6526
-		self.dexterity = dex
-		self.magic = ma
-		
-		self.weaponEquiped = Item('fist', CHOP, 1, 1, 1)
-		
-	#####################################################################
-	# define basic inroom movement	
-		
-	def move(self, direction):
-		
-		# look where the next field lies, then look wether you can go there
-		nextField = ut.getNextField(direction, self.positionX, self.positionY) 
-		
-		if (ut.isClamped(nextField[X], self.room.width - 1, 0) and ut.isClamped(nextField[Y], self.room.length - 1, 0)) or isDoor(nextField, self.room.doors):
-			self.positionX, self.positionY = ut.getNextField(direction, self.positionX, self.positionY)
-			
 
-	def attack(self, direction):
-		if direction == UP:
-			print('p')
-		
-	def giveDamageFeedback(self, dmg):
-		
-		print(self.name, 'was hit for ', dmg, 'points')
-			
+    def __init__(self, name, rm, lp = 50, stg = 10, dex = 10, ma = 0, img = pyIF.IMG_SKELETON):
+
+        Object.__init__(self, name, rm, img, False)
+
+        # player stats	
+        self.strength = stg ## 0176 9787 6526
+        self.dexterity = dex
+        self.magic = ma
+
+        self.weaponEquiped = Item('fist', CHOP, 1, 1, 1)
+
+    #####################################################################
+    # define basic inroom movement	
+
+    def move(self, direction):
+
+                # look where the next field lies, then look wether you can go there
+                nextField = util.getNextField(direction, self.position)
+
+                if util.isClamped(nextField,  pos(0, 0), pos(self.room.width - 1, self.room.length -1)) or isDoor(nextField, self.room.doors):
+                        self.position = util.getNextField(direction, self.position)
+                if isDoor(nextField, self.room.doors):
+                    print("There is a door")
+
+
+    def attack(self, direction):
+        pass
+
+    def giveDamageFeedback(self, dmg):
+        pass
+
 
 
 class Hero(Creature):
-	
+
 	def __init__(self, rm, level, name = 'player', lp = 100, stg = 20, dex = 20, ma = 0, img = pyIF.IMG_PLAYER_ROOM): # constructor 
 
 		Creature.__init__(self, name, rm, lp, stg, dex, ma, img)
 
 		# attributes necessary to move in a hallway	
-		self.positionOverallX = 0  # You start in a room so you  do
-		self.positionOverallY = 0  # not need an overall position.
+		self.positionOverall = pos(0, 0)  # You start in a room so you  do not need an overall position.
 		self.currentHallway = None # same thing for the hallway
 		self.movementOptions = None  # and the movingoptions in a hallway.
 		self.level = level
-		
+
 		self.weaponEquiped = Item('dagger', THRUST, 5, 1, 1)
-	
+
 	############################################################################	
 	# move the player	
-		
-	def move(self, direction):
-		
-		if self.room:
-			Creature.move(self, direction)
-			
-		elif not self.room:		
-			if direction == UP:
-				if self.movementOptions['up']:
-					self.positionOverallX, self.positionOverallY = self.movementOptions['up']	
 
-			elif direction == DOWN:
-				if self.movementOptions['down']:
-					self.positionOverallX, self.positionOverallY = self.movementOptions['down']
-					
-			elif direction == RIGHT:
-				if self.movementOptions['right']:
-					self.positionOverallX, self.positionOverallY = self.movementOptions['right']
-					
-			elif direction == LEFT:
-				if self.movementOptions['left']:
-					self.positionOverallX, self.positionOverallY = self.movementOptions['left']
-	
+	def move(self, direction):
+
+            if self.room:
+                    Creature.move(self, direction)
+
+            elif not self.room:
+                    if self.movementOptions[direction]:
+                            self.positionOverall = self.movementOptions[direction]
+
+            print(str(self.room.doors))
+            print("Size: {0}, Position: {1}, Room Position {2}".format(self.room.size, self.position, self.room.topLeftCorner))
+
+
 	##################################################################################
 	# change between room and hallwaysettings if needed
 
 	def updatePositionalData(self):
-		
+
 		# check weather the Hereo left the room
-		if self.room and (self.positionX < 0 or self.positionX > self.room.width - 1 or self.positionY < 0 or self.positionY > self.room.length - 1):
-			# getting the position of the player outside of the room
-			self.positionOverallX = self.positionX + self.room.topLeftCornerX
-			self.positionOverallY = self.positionY + self.room.topLeftCornerY
+		if self.room and (self.position.x < 0 or self.position.x > self.room.width - 1 or self.position.y < 0 or self.position.y > self.room.length - 1):
+			# getting the position of the player outil.ide of the room
+			self.positionOverall = self.position + self.room.topLeftCorner
 			# leaving the room
 			self.room = False
-			self.currentHallway = getCurrentHallway(self.level.hallways, (self.positionOverallX, self.positionOverallY))
-			self.movementOptions = getHallwayMovementOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
+			self.currentHallway = getCurrentHallway(self.level.hallways, self.positionOverall)
+			self.movementOptions = getHallwayMovementOptions(self.currentHallway, self.positionOverall)
 			self.image = pyIF.IMG_PLAYER_HALLWAY
-			
+
 		elif not self.room:
-			self.movementOptions = getHallwayMovementOptions(self.currentHallway, (self.positionOverallX, self.positionOverallY))
-			if isDoor((self.positionOverallX, self.positionOverallY), self.level.allDoors):			
-				rc = getRoomAtDoor(self.positionOverallX, self.positionOverallY, self.level.allDoors)
-				self.room = self.level.rooms[rc[X]][rc[Y]]
-				self.positionX, self.positionY = (self.positionOverallX - self.room.topLeftCornerX, self.positionOverallY - self.room.topLeftCornerY)
+			self.movementOptions = getHallwayMovementOptions(self.currentHallway, self.positionOverall)
+			if isDoor((self.positionOverallX, self.positionOverallY), self.level.allDoors):
+				rc = getRoomAtDoor(self.positionOverall, self.level.allDoors)
+				self.room = self.level.rooms[rc.x][rc.y]
+				self.position= self.positionOverall - self.room.topLeftCorner
 				self.image = pyIF.IMG_PLAYER_ROOM
 				self.currentHallway = []
 
 
 class Room:
-	
+
 	def __init__(self, nr, x, y, rx, ry, wd, ln, doors): # constructor
-		
-		self.number = nr
-		self.topLeftCornerX = x
-		self.topLeftCornerY = y
-		self.rectColumn = rx
-		self.rectRow = ry
-		self.length = ln
-		self.width = wd
-		self.size = self.length * self.width 
-		self.doors = doors
-		
-		self.attributeObjs = {}	# room-specific things that need to be called directly
-		self.massObjs = []		# stuff that does not move (treasures, loot, etc.)
-		self.monsters = []
-		self.impassableObjs = []
-		
+
+            self.number = nr
+            self.topLeftCorner = pos(x, y)
+            self.rectColumn = rx
+            self.rectRow = ry
+            self.length = ln
+            self.width = wd
+            self.doors = doors
+            self.size = pos(ln, wd)
+
+            self.attributeObjs = {}	# room-specific things that need to be called directly
+            self.massObjs = []		# stuff that does not move (treasures, loot, etc.)
+            self.monsters = []
+            self.impassableObjs = []
+
 	def updateImpassableObjs(self):
-		
+
 		self.impassableObjs = []
 		for piece in self.massObjs + self.monsters:
 			if not piece.moveable:
 				self.impassableObjs.append((piece.positionX, piece.positionY))
-				
+
 	def returnMassObjectAt(self, coordX, coordY):
-		
+
 		for obj in self.massObjs:
 			if (obj.positionX, obj.positionY) == (coordX, coordY):
 				return obj
-	
-			
+
+
 	def __str__(self):
-		return ('Room Object, x = %s, y = %s, length = %s, width = %s')	
+		return ('Room Object, x = %s, y = %s, length = %s, width = %s')
 
 
 class Level:
-	
-	def __init__(self, nr, rowWidth, rowLength, missingRooms):
-		
-		self.nr = nr
-		self.roomRowWidth = rowWidth
-		self.roomRowLength = rowLength
-		self.missingRooms = missingRooms
-		self.roomRect = (int(LEVELWIDTH / self.roomRowWidth), int(LEVELHEIGHT / self.roomRowLength))
-		self.roomtally = 0
-		
-		self.allRooms = None
-		self.roomDescent = None
-		self.roomKlimb = None
-		self.allDoors = []
-		self.rooms = []
-		self.hallways = []
-		
-		self.possibleContent = []
-		
-		self.build = False	# the actual levelproperties aren't created in the initializer but in an extra funktion.
-							# The 'build'-attribute determines weather this function has already been called on the levelobject.
+
+    def __init__(self, nr, rowWidth, rowLength, missingRooms):
+
+        self.nr = nr
+        self.roomRowWidth = rowWidth
+        self.roomRowLength = rowLength
+        self.missingRooms = missingRooms
+        self.roomRect = (int(LEVELWIDTH / self.roomRowWidth), int(LEVELHEIGHT / self.roomRowLength))
+        self.roomtally = 0
+
+        self.allRooms = None
+        self.roomDescent = None
+        self.roomKlimb = None
+        self.allDoors = []
+        self.rooms = []     # 2D array where the rooms are stored '[column, row]'
+        self.hallways = []
+
+        self.possibleContent = []
+
+        self.build = False	# the actual levelproperties aren't created in the initializer butil.in an extra funktion.
+                            # The 'build'-attributes determines weather this function has already been called on the levelobject.
 
 
-	def create(self):
-		# TODO: build a new level from scratch based on the code on the beginning of the main game loop.
-		roomNr = 0
-		for i in range(self.roomRowWidth):
-			self.rooms.append([])
+    def create(self):
+        # TODO: build a new level from scratch based on the code on the beginning of the main game loop.
+        roomNr = 0
+        for i in range(self.roomRowWidth):
+            self.rooms.append([])
 
-		# creating the room's attributes
-		for rectColumn in range(self.roomRowWidth):   # x
-			for rectRow in range(self.roomRowLength): # y
-				xCoord_Room = rectColumn * self.roomRect[X] + random.randint(2, int(self.roomRect[X]/ 3))
-				yCoord_Room = rectRow * self.roomRect[Y] + random.randint(2, int(self.roomRect[Y] / 3))
-				roomWidth = random.randint(5, self.roomRect[X] - (xCoord_Room - rectColumn * self.roomRect[X]) - 1)
-				roomLength = random.randint(4, int(self.roomRect[Y] * 2 / 3))
-				currentRoom = Room(roomNr + 1, xCoord_Room, yCoord_Room, rectColumn, rectRow, roomWidth, roomLength, []) 
-				self.rooms[rectColumn].append(currentRoom)
-				roomNr += 1
+        # creating the room's attributes
+        for rectColumn in range(self.roomRowWidth):   # x
+            for rectRow in range(self.roomRowLength): # y
+                xCoord_Room = rectColumn * self.roomRect[X] + random.randint(2, int(self.roomRect[X]/ 3))
+                yCoord_Room = rectRow * self.roomRect[Y] + random.randint(2, int(self.roomRect[Y] / 3))
+                roomWidth = random.randint(5, self.roomRect[X] - (xCoord_Room - rectColumn * self.roomRect[X]) - 1)
+                roomLength = random.randint(4, int(self.roomRect[Y] * 2 / 3))
+                currentRoom = Room(roomNr + 1, xCoord_Room, yCoord_Room, rectColumn, rectRow, roomWidth, roomLength, [])
+                self.rooms[rectColumn].append(currentRoom)
+                roomNr += 1
 
-		# deleting a few rooms
-		for i in range(self.missingRooms):
-			xNumber = random.randint(0, self.roomRowWidth - 1)
-			yNumber = random.randint(0, self.roomRowLength - 1)
-			self.rooms[xNumber][yNumber] = False
+        # deleting a few rooms
+        for i in range(self.missingRooms):
+            xNumber = random.randint(0, self.roomRowWidth - 1)
+            yNumber = random.randint(0, self.roomRowLength - 1)
+            self.rooms[xNumber][yNumber] = False
 
-		# counting the number of rooms 
-		for column in self.rooms:
-			for room in column:
-				if room:
-					self.roomtally += 1
+        # counting the number of rooms 
+        for column in self.rooms:
+            for room in column:
+                if room:
+                    self.roomtally += 1
 
-		###################################################################################
-		# place doors where doors are needed and store there coordinates
+        ###################################################################################
+        # place doors where doors are needed and store there coordinates as well as their properties
 
-		# getting a list of the rooms with greater range
-		newRooms = copy.deepcopy(self.rooms)
-		newRooms.insert(0, [False, False, False, False, False])
-		newRooms.append([False, False, False, False, False])
-		for column in range(self.roomRowWidth + 2):
-			newRooms[column].insert(0, False)
-			newRooms[column].append(False)
+        # getting a list of the rooms with greater range
+        newRooms = copy.deepcopy(self.rooms)
+        newRooms.insert(0, [False for i in range(self.roomRowWidth)])
+        newRooms.append([False for i in range(self.roomRowWidth)])
+        for column in range(self.roomRowWidth + 2):
+            newRooms[column].insert(0, False)
+            newRooms[column].append(False)
 
-		# creating doors
-		roomRectX = 1    	# column of the current room
-		for rectColumn in self.rooms:
-			roomRectY = 1	# row of the current room
-			for room in rectColumn:	
-				if room:
-					if newRooms[roomRectX][roomRectY - 1]: # check for a room over the current one
-						room.doors.append((random.randint(1, room.width - 2), 0))
-					if newRooms[roomRectX][roomRectY + 1]: # check for a room under the current one
-						room.doors.append((random.randint(1, room.width - 2), room.length - 1))
-					if newRooms[roomRectX + 1][roomRectY]: # check for a room to the right
-						room.doors.append((room.width - 1, random.randint(1, room.length - 2)))
-					if newRooms[roomRectX - 1][roomRectY]: # check for a room to the left
-						room.doors.append((0, random.randint(1, room.length - 2)))
-				roomRectY += 1
-			roomRectX += 1
-			
-		#################################################################################
-		# get a list of all the doors with their properties
-		rooms_copy = copy.deepcopy(self.rooms)
-		roomRectX = 0
-		for rectColumn in rooms_copy:
-			roomRectY = 0
-			for room in rectColumn:
-				if room:
-					if room.number != False:
-						doorNr = 0
-						for door in room.doors:
-							if door[0] == 0:
-								direction = LEFT
-							elif door[0] == room.width - 1:
-								direction = RIGHT
-							elif door[1] == 0:
-								direction = UP
-							elif door[1] == room.length - 1:
-								direction = DOWN			
-							self.allDoors.append({'doorNr': doorNr, 'rectx': roomRectX, 'recty': roomRectY, 'roomx': room.topLeftCornerX, 'roomy': room.topLeftCornerY, 'x': door[0], 'y': door[1], 'direction': direction})
-							doorNr += 1
-				roomRectY += 1
-			roomRectX += 1		
-
-		###################################################################################################
-		# Create Hallways
-		allDoorsCopy = copy.deepcopy(self.allDoors)
-		doorPairs = getDoorPairs(allDoorsCopy)
-		for doorPair in doorPairs:
-			xCoordDoor1 = doorPair[0]['x'] + doorPair[0]['roomx']
-			yCoordDoor1 = doorPair[0]['y'] + doorPair[0]['roomy']
-			xCoordDoor2 = doorPair[1]['x'] + doorPair[1]['roomx']
-			yCoordDoor2 = doorPair[1]['y'] + doorPair[1]['roomy']
-			xCoordIndent1 = xCoordDoor1
-			yCoordIndent1 = yCoordDoor1
-			xCoordIndent2 = xCoordDoor2
-			yCoordIndent2 = yCoordDoor2
-			if doorPair[0]['direction'] == RIGHT:
-				xCoordIndent1 += 1
-				xCoordIndent2 -= 1
-				orient = HORIZONTALLY
-			elif doorPair[0]['direction'] == LEFT:
-				xCoordIndent1 -= 1
-				xCoordIndent2 += 1
-				orient = HORIZONTALLY
-			elif doorPair[0]['direction'] == UP:
-				yCoordIndent1 -= 1
-				yCoordIndent2 += 1
-				orient = PERPENDICULAR
-			elif doorPair[0]['direction'] == DOWN:
-				yCoordIndent1 += 1
-				yCoordIndent2 -= 1
-				orient = PERPENDICULAR	
-
-			if orient == HORIZONTALLY:
-				xCoordMiddle = int((xCoordDoor1 + xCoordDoor2) / 2)
-				self.hallways.append((((xCoordDoor1, yCoordDoor1), (xCoordIndent1, yCoordIndent1)),
-				((xCoordIndent1, yCoordIndent1), (xCoordMiddle, yCoordIndent1)), 
-				((xCoordMiddle, yCoordIndent1), (xCoordMiddle, yCoordIndent2)), 
-				((xCoordMiddle, yCoordIndent2), (xCoordIndent2, yCoordIndent2)),
-				((xCoordDoor2, yCoordDoor2), (xCoordIndent2, yCoordIndent2))))
-			elif orient == PERPENDICULAR:
-				yCoordMiddle = int((yCoordDoor1 + yCoordDoor2) / 2)
-				self.hallways.append((((xCoordDoor1, yCoordDoor1), (xCoordIndent1, yCoordIndent1)),
-				((xCoordIndent1, yCoordIndent1), (xCoordIndent1, yCoordMiddle)), 
-				((xCoordIndent1, yCoordMiddle), (xCoordIndent2, yCoordMiddle)), 
-				((xCoordIndent2, yCoordMiddle), (xCoordIndent2, yCoordIndent2)),
-				((xCoordDoor2, yCoordDoor2), (xCoordIndent2, yCoordIndent2))))
+        # creating doors
+        roomRectX = 1           # column of the current room
+        for rectColumn in self.rooms:
+            roomRectY = 1	# row of the current room
+            for room in rectColumn:
+                if room:
+                    roomPos = pos(roomRectX, roomRectY)
+                    for direction in DIRECTIONS:
+                        directionVector = util.toPosition(direction)
+                        otherRoomPos = roomPos + directionVector
+                        radial = pos((room.width-1)*int((directionVector.x+1)*0.5), (room.length-1)*int((directionVector.y+1)*0.5))
+                        tangential = pos(random.randint(1, room.width-2)*abs(directionVector.y), random.randint(1, room.length-2)*abs(directionVector.x))
+                        if newRooms[otherRoomPos.x][otherRoomPos.y]: # check for a room in the current direction
+                            room.doors.append(radial+tangential)
+                            self.allDoors.append({'roomRectPos': roomPos, 'roomPos': room.topLeftCorner, 'pos': radial+tangential, 'direction': direction})
+                roomRectY += 1
+            roomRectX += 1
 
 
-		####################################################################################
-		# Set up the player, monsters and other things in the rooms 		
+        ###################################################################################################
+        # Create Hallways
+        allDoorsCopy = copy.deepcopy(self.allDoors)
+        doorPairs = getDoorPairs(allDoorsCopy)
+        for doorPair in doorPairs:
+            CoordDoor1 = doorPair[0]['pos'] + doorPair[0]['roomPos']
+            CoordDoor2 = doorPair[1]['pos'] + doorPair[1]['roomPos']
+            CoordIndent1 = CoordDoor1
+            CoordIndent2 = CoordDoor2
 
-		# give the hereo a room to start
-		for column in self.rooms:
-			for room in column:
-				if room:
-					startingRoom = room 
-					break
+            directionVec = util.toPosition(doorPair[0]['direction'])
+            CoordIndent1 += directionVec
+            CoordIndent2 -= directionVec
+            orient = util.toOrientation(doorPair[0]['direction'])
 
-		# put objects and enemies into rooms
-		possibleContent = ut.shuffle(['start', 'exit', 'heaven'] + ['treasure' for i in range(self.roomtally - 3)])
-		self.possibleContent = (item for item in possibleContent)
-		for column in self.rooms:
-			for room in column:
-				if room:
-					item = next(self.possibleContent)
-					if item == 'start':
-						if self.nr > 0:
-							room.attributeObjs['ladder_up'] = Object(LADDER_UP, room, pyIF.IMG_LADDER_UP)
-						self.roomKlimb = room
-					elif item == 'exit' and self.nr < LEVELTALLY - 1:
-						room.attributeObjs['ladder_down'] = Object(LADDER_DOWN, room, pyIF.IMG_LADDER_DOWN)
-						self.roomDescent = room
-					elif item == 'heaven':
-						room.attributeObjs['fountain'] = Object(FOUNTAIN, room, pyIF.IMG_FOUNTAIN)
-					elif item == 'treasure':
-						room.massObjs.append(Object(TREASURE, room, pyIF.IMG_TREASURE))
-					if not item in ['start', 'exit', 'heaven']:
-						room.monsters.append(Creature("Goblin", room))
-			
-		# finish the level
-		self.build = True
-	
+            Middle = int(((CoordDoor2 - CoordDoor1)*directionVec) / 2)
+            CoordMiddle1 = CoordDoor1 + Middle*directionVec
+            CoordMiddle2 = CoordDoor2 + ((CoordDoor1-CoordDoor2)*directionVec + Middle)*directionVec
+            self.hallways.append(((CoordDoor1, CoordIndent1),
+            (CoordIndent1, CoordMiddle1),
+            (CoordMiddle1, CoordMiddle2),
+            (CoordMiddle2, CoordIndent2),
+            (CoordDoor2, CoordIndent2)))
 
-	def dismantle(self): 
-		# TODO: save the level's state in the least amount of data possible.
-		pass							
 
-	def build(self):
-		# TODO: rebuild a saved level.
-		pass
+        ####################################################################################
+        # Set up the player, monsters and other things in the rooms 		
 
-	
-		
+        # give the hereo a room to start
+        for column in self.rooms:
+            for room in column:
+                if room:
+                    startingRoom = room
+                    break
+
+        # put objects and enemies into rooms
+        possibleContent = util.shuffle(['start', 'exit', 'heaven'] + ['treasure' for i in range(self.roomtally - 3)])
+        self.possibleContent = (item for item in possibleContent)
+        for column in self.rooms:
+            for room in column:
+                if room:
+                    item = next(self.possibleContent)
+                    if item == 'start':
+                        if self.nr > 0:
+                            room.attributeObjs['ladder_up'] = Object(LADDER_UP, room, pyIF.IMG_LADDER_UP)
+                        self.roomKlimb = room
+                    elif item == 'exit' and self.nr < LEVELTALLY - 1:
+                        room.attributeObjs['ladder_down'] = Object(LADDER_DOWN, room, pyIF.IMG_LADDER_DOWN)
+                        self.roomDescent = room
+                    elif item == 'heaven':
+                        room.attributeObjs['fountain'] = Object(FOUNTAIN, room, pyIF.IMG_FOUNTAIN)
+                    elif item == 'treasure':
+                        room.massObjs.append(Object(TREASURE, room, pyIF.IMG_TREASURE))
+                    if not item in ['start', 'exit', 'heaven']:
+                        room.monsters.append(Creature("Goblin", room))
+
+        # finish the level
+        self.build = True
+
+
+    def dismantle(self):
+        # TODO: save the level's state in the least amount of data possible.
+        pass
+
+    def build(self):
+        # TODO: rebuild a saved level.
+        pass
+
+
+
 if __name__ == '__main__':
 	main()

@@ -95,7 +95,7 @@ def drawField(x, y):
 
 
 def drawHallway(hallwayPart):
-	
+
 	if hallwayPart[0][X] == hallwayPart[1][X]:
 		differenceY = hallwayPart[0][Y] - hallwayPart[1][Y]		# the number of blocks the endpoints are away from each other
 		for blockY in range(abs(differenceY) + 1):
@@ -119,30 +119,30 @@ def drawObject(x, y, img):
 
 
 def drawGameObject(gameObject):
-    
+
     if gameObject.room:
-            drawObject(gameObject.positionX + gameObject.room.topLeftCornerX, gameObject.positionY + gameObject.room.topLeftCornerY, gameObject.image)
+            drawObject(gameObject.position.x + gameObject.room.topLeftCorner.x, gameObject.position.y + gameObject.room.topLeftCorner.y, gameObject.image)
     else: # handling playermovement outside of rooms
-            drawObject(gameObject.positionOverallX, gameObject.positionOverallY, gameObject.image)
+            drawObject(gameObject.positionOverall.x, gameObject.positionOverall.y, gameObject.image)
 
 
 def drawRoom(room):
-        
+
 # draw the walls 
-        drawWalls(room.topLeftCornerX, room.topLeftCornerY, room.width, room.length)
+        drawWalls(room.topLeftCorner.x, room.topLeftCorner.y, room.width, room.length)
 
 # draw the floor
-        for row in range(room.topLeftCornerY + 1, room.topLeftCornerY + room.length - 1):
-                for field in range(room.topLeftCornerX + 1, room.topLeftCornerX +  room.width - 1):
+        for row in range(room.topLeftCorner.y + 1, room.topLeftCorner.y + room.length - 1):
+                for field in range(room.topLeftCorner.x + 1, room.topLeftCorner.x +  room.width - 1):
                         drawField(field, row)
 
 # draw the doors
         for door in room.doors:
-                drawDoor(door[0], door[1], room.topLeftCornerX, room.topLeftCornerY, room.width, room.length)
+                drawDoor(door.x, door.y, room.topLeftCorner.x, room.topLeftCorner.y, room.width, room.length)
 
 
 def drawRoomContent(room):
-        
+
         for obj in room.massObjs:
                 drawGameObject(obj)
         for key in room.attributeObjs:

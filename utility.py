@@ -1,30 +1,23 @@
 import random
 
 
-UP = 'up'
-DOWN = 'down'
-LEFT = 'left'
-RIGHT = 'right'
-NONE = 'none'
+UP = 1
+DOWN = 3
+LEFT = 2
+RIGHT = 0
+NONE = None
+DIRECTIONS = [RIGHT, UP, LEFT, DOWN]
 HORIZONTALLY = 'horizontally'
 PERPENDICULAR = 'perpendidular'
 
-def getNextField(direct, posx, posy):
+def getNextField(direction, position):
 
-	if direct == RIGHT:
-		return posx + 1, posy
-	elif direct == LEFT:
-		return posx - 1, posy
-	elif direct == UP:
-		return posx, posy - 1
-	elif direct == DOWN:
-		return posx, posy + 1
+    return position+toPosition(direction)
 
 
-def isClamped(value, vmax, vmin):
-	if value != vmax and value != vmin:
-		return True
-
+def isClamped(position, border1, border2):
+    if not position.x in (border1.x, border2.x) and not position.y in (border1.y, border2.y):
+        return True
 
 def shuffle(_list):
 	random.shuffle(_list)
@@ -37,3 +30,87 @@ def count(nr, nr_max):
 	else:
 		nr += 1
 	return nr
+
+
+class pos:
+
+    def __init__(self, x, y):
+        self.x=x
+        self.y=y
+
+    def __add__(self, other):
+        return pos(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return pos(self.x - other.x, self.y - other.y)
+
+    def __mul__(self, scalar):
+        try:
+            return self.x*scalar.x + self.y*other.y
+        except:
+            return pos(self.x * scalar, self.y * scalar)
+
+    def __rmul__(self, scalar):
+        return self.__mul__(self, scalar)
+
+    def __str__(self):
+        return "({0}, {1})".format(self.x, self.y)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, other):
+        return (self.x == other.x and self.y==other.y)
+
+
+def getDirection(position):
+    x = float(position.x)
+    y = float(position.y)
+    if x > 0:
+        try:
+            if abs(x/y) > 1:
+                return RIGHT
+            elif x/y > 0:
+                return DOWN
+            elif x/y < 0:
+                return UP
+        except ZeroDivisionError:
+            return RIGHT
+    elif x < 0:
+        return (getDirection(pos(-x, y)) + 2)%4     # mirror the return from the case 'x>0'
+    else:
+        if y > 0:
+            return DOWN
+        elif y < 0:
+            return UP
+        else:
+            return NONE
+
+
+def getOppositeDirection(direction):
+    return (direction+2)%4
+
+
+def getpos(angle):
+    pass
+
+
+def toPosition(direction):
+    if direction == RIGHT:
+        return pos(1, 0)
+    elif direction == UP:
+        return pos(0, -1)
+    elif direction == LEFT:
+        return pos(-1, 0)
+    elif direction ==DOWN:
+        return pos(0, 1)
+
+def toOrientation(direction):
+    if (direction==RIGHT or direction==LEFT):
+        return HORIZONTALLY
+    elif (direction==UP or direction == DOWN):
+        return PERPENDICULAR
+
+if __name__=='__main__':
+    #print(getDirection(pos(3,1)), getDirection(pos(2,0)), getDirection(pos(-3, 4)), getDirection(pos(-2,1)))
+    print([str(toPosition(direction)) for direction in DIRECTIONS])
