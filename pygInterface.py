@@ -1,4 +1,5 @@
 import pygame, sys
+from utility import pos
 
 
 ####################################################################
@@ -47,26 +48,30 @@ def imagewrapper(loader):
     return inner
 pygame.image.load = imagewrapper(pygame.image.load)
 
-IMG_NONE = pygame.image.load(IMAGE_PATH + '/NoneA.png')
-IMG_PLAYER_ROOM = pygame.image.load(IMAGE_PATH + '/Hero15.png')
-IMG_PLAYER_HALLWAY = pygame.image.load(IMAGE_PATH + '/Hero_Hallway1.png')
-IMG_LADDER_DOWN = pygame.image.load(IMAGE_PATH + '/LeiterAbwaerts.png')
-IMG_LADDER_UP =  pygame.image.load(IMAGE_PATH + '/LeiterAufwaerts.png')
-IMG_FOUNTAIN = pygame.image.load(IMAGE_PATH + '/Quelle.png')
-IMG_TREASURE = pygame.image.load(IMAGE_PATH + '/Schatz3.png')
-#IMG_TEST = pygame.image.load(IMAGE_PATH + '/groesse.png')
-#IMG_GHOST = pygame.image.load(IMAGE_PATH + '/Geist.png')
-IMG_IMP = pygame.image.load(IMAGE_PATH + '/KoboltA.png')
-IMG_IMPWARRIOR = pygame.image.load(IMAGE_PATH + '/KoboltB.png')
-IMG_SKELETON = pygame.image.load(IMAGE_PATH + '/Magic_effect3.png')
-IMG_ATTACKIMPACT = pygame.image.load(IMAGE_PATH + '/AttackPointA.png')
-IMG_GRASS_1 = pygame.image.load(IMAGE_PATH + 'Grass1.png')
-
-
+images = {"NONE" :  pygame.image.load(IMAGE_PATH + '/NoneA.png'),
+    "PLAYER_ROOM" :  pygame.image.load(IMAGE_PATH + '/Hero15.png'),
+    "PLAYER_HALLWAY" :  pygame.image.load(IMAGE_PATH + '/Hero_Hallway1.png'),
+    "LADDER_DOWN" :  pygame.image.load(IMAGE_PATH + '/LeiterAbwaerts.png'),
+    "LADDER_UP" :   pygame.image.load(IMAGE_PATH + '/LeiterAufwaerts.png'),
+    "FOUNTAIN" :  pygame.image.load(IMAGE_PATH + '/Quelle.png'),
+    "TREASURE" :  pygame.image.load(IMAGE_PATH + '/Schatz3.png'),
+    #"TEST" :  pygame.image.load(IMAGE_PATH + '/groesse.png'),
+    #"GHOST" :  pygame.image.load(IMAGE_PATH + '/Geist.png'),
+    "IMP" :  pygame.image.load(IMAGE_PATH + '/KoboltA.png'),
+    "IMPWARRIOR" :  pygame.image.load(IMAGE_PATH + '/KoboltB.png'),
+    "SKELETON" :  pygame.image.load(IMAGE_PATH + '/Magic_effect3.png'),
+    "ATTACKIMPACT" :  pygame.image.load(IMAGE_PATH + '/AttackPointA.png'),
+    "GRASS_1" :  pygame.image.load(IMAGE_PATH + 'Grass1.png')}
 
 #####################################################################
 # identifiers
 
+UP = 1
+DOWN = 3
+LEFT = 2
+RIGHT = 0
+NONE = None
+DIRECTIONS = [RIGHT, UP, LEFT, DOWN]
 X = 0       # use it for tuples which
 Y = 1		# contain x, y coordinates
 
@@ -82,84 +87,77 @@ def drawCircle(color, center, radius, width=1):
 
 
 def drawGrid():
-        for line in range(0, WINDOWHEIGHT, BLOCKSIZE):
-                drawLine(WHITE, (0, line), (BLOCKSIZE * BOARDWIDTH, line)) # horizontally
-        for column in range(0, BLOCKSIZE * BOARDWIDTH + 1, BLOCKSIZE):
-                drawLine(WHITE, (column, 0), (column, WINDOWHEIGHT)) # perpendicularly
+    for line in range(0, WINDOWHEIGHT, BLOCKSIZE):
+            drawLine(WHITE, (0, line), (BLOCKSIZE * BOARDWIDTH, line)) # horizontally
+    for column in range(0, BLOCKSIZE * BOARDWIDTH + 1, BLOCKSIZE):
+            drawLine(WHITE, (column, 0), (column, WINDOWHEIGHT)) # perpendicularly
 
 
 def drawField(x, y):
-        centerX = (x - 1) * BLOCKSIZE + int(BLOCKSIZE / 2)
-        centerY = (y - 1) * BLOCKSIZE + int(BLOCKSIZE / 2)
-        drawCircle(WHITE, (centerX, centerY), FIELDRADIUS, 1)
+    centerX = x * BLOCKSIZE + int(BLOCKSIZE / 2)
+    centerY = y * BLOCKSIZE + int(BLOCKSIZE / 2)
+    drawCircle(WHITE, (centerX, centerY), FIELDRADIUS, 1)
 
 
 def drawHallway(hallwayPart):
 
-	if hallwayPart[0][X] == hallwayPart[1][X]:
-		differenceY = hallwayPart[0][Y] - hallwayPart[1][Y]		# the number of blocks the endpoints are away from each other
-		for blockY in range(abs(differenceY) + 1):
-			if differenceY != 0:
-				blockCoordY = (hallwayPart[0][Y] + (blockY * (differenceY / abs(differenceY))) * -1 - 1) * BLOCKSIZE
-				drawRect(GRAY, ((hallwayPart[0][X] - 1) * BLOCKSIZE, blockCoordY, BLOCKSIZE, BLOCKSIZE))
-	elif hallwayPart[0][Y] == hallwayPart[1][Y]:
-		differenceX = hallwayPart[0][X] - hallwayPart[1][X]		# the number of block the endpoints are away from each other
-		for blockX in range(abs(differenceX) + 1):
-			if differenceX != 0:
-				blockCoordX = (hallwayPart[0][X] + (blockX * (differenceX / abs(differenceX))) * -1 - 1) * BLOCKSIZE	
-				drawRect(GRAY, (blockCoordX, (hallwayPart[0][Y] - 1) * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE))
+    if hallwayPart[0].x == hallwayPart[1].x:
+        differenceY = hallwayPart[0].y - hallwayPart[1].y		# the number of blocks the endpoints are away from each other
+        for blockY in range(abs(differenceY) + 1):
+            if differenceY != 0:
+                blockCoordY = (hallwayPart[0].y + (blockY * (differenceY / abs(differenceY))) * -1) * BLOCKSIZE
+                drawRect(GRAY, ((hallwayPart[0].x) * BLOCKSIZE, blockCoordY, BLOCKSIZE, BLOCKSIZE))
+    elif hallwayPart[0].y == hallwayPart[1].y:
+        differenceX = hallwayPart[0].x - hallwayPart[1].x		# the number of block the endpoints are away from each other
+        for blockX in range(abs(differenceX) + 1):
+            if differenceX != 0:
+                blockCoordX = (hallwayPart[0].x + (blockX * (differenceX / abs(differenceX))) * -1) * BLOCKSIZE
+                drawRect(GRAY, (blockCoordX, (hallwayPart[0].y) * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE))
 
 
 
 
-def drawObject(x, y, img):
-    posX = (x - 1) * BLOCKSIZE
-    posY = (y - 1) * BLOCKSIZE
-    DISPLAYSURF.blit(img, (posX, posY))	
+def drawObject(obj):
+    posi = (obj.position) * BLOCKSIZE
+    DISPLAYSURF.blit(images[obj.name], (posi.x, posi.y))
 
 
-def drawGameObject(gameObject):
-
-    if gameObject.room:
-            drawObject(gameObject.position.x + gameObject.room.topLeftCorner.x, gameObject.position.y + gameObject.room.topLeftCorner.y, gameObject.image)
-    else: # handling playermovement outside of rooms
-            drawObject(gameObject.positionOverall.x, gameObject.positionOverall.y, gameObject.image)
 
 
 def drawRoom(room):
 
-# draw the walls 
-        drawWalls(room.topLeftCorner.x, room.topLeftCorner.y, room.width, room.length)
+    # draw the walls 
+    drawWalls(room.origin.x, room.origin.y, room.width, room.length)
 
-# draw the floor
-        for row in range(room.topLeftCorner.y + 1, room.topLeftCorner.y + room.length - 1):
-                for field in range(room.topLeftCorner.x + 1, room.topLeftCorner.x +  room.width - 1):
-                        drawField(field, row)
+    # draw the floor
+    for row in range(room.origin.y + 1, room.origin.y + room.length - 1):
+        for field in range(room.origin.x + 1, room.origin.x +  room.width - 1):
+            drawField(field, row)
 
-# draw the doors
-        for door in room.doors:
-                drawDoor(door.x, door.y, room.topLeftCorner.x, room.topLeftCorner.y, room.width, room.length)
+    # draw the doors
+    for door in room.doors:
+        drawDoor(door)
 
 
 def drawRoomContent(room):
 
-        for obj in room.massObjs:
-                drawGameObject(obj)
-        for key in room.attributeObjs:
-                drawGameObject(room.attributeObjs[key])
-        for monster in room.monsters:
-                drawGameObject(monster)
+    for obj in room.massObjs:
+        drawObject(obj)
+    for key in room.attributeObjs:
+        drawObject(room.attributeObjs[key])
+    for monster in room.monsters:
+        drawObject(monster)
 
 
 def drawWalls(posx, posy, width, length):
     # get the pixel-coords for the start- and endpoints
-    outerEdgesLeftx = (posx - 1) * BLOCKSIZE + LINEDISTANCE
+    outerEdgesLeftx = posx * BLOCKSIZE + LINEDISTANCE
     innerEdgesRightx = outerEdgesLeftx + (width - 1) * BLOCKSIZE
-    innerEdgesLeftx = (posx - 1) * BLOCKSIZE + LINEDISTANCE * 2
+    innerEdgesLeftx = posx * BLOCKSIZE + LINEDISTANCE * 2
     outerEdgesRightx = innerEdgesLeftx + (width - 1) * BLOCKSIZE
-    outerEdgesUpy = (posy - 1) * BLOCKSIZE + LINEDISTANCE
+    outerEdgesUpy = posy * BLOCKSIZE + LINEDISTANCE
     innerEdgesDowny = outerEdgesUpy + (length - 1) * BLOCKSIZE
-    innerEdgesUpy = (posy - 1) * BLOCKSIZE + LINEDISTANCE * 2
+    innerEdgesUpy = posy * BLOCKSIZE + LINEDISTANCE * 2
     outerEdgesDowny = (innerEdgesUpy) + (length - 1) * BLOCKSIZE
     # draw the room walls
     drawLine(BROWN, (outerEdgesLeftx, outerEdgesUpy), (outerEdgesRightx, outerEdgesUpy), WALLWIDTH)
@@ -172,19 +170,20 @@ def drawWalls(posx, posy, width, length):
     drawLine(BROWN, (outerEdgesRightx, outerEdgesUpy), (outerEdgesRightx, outerEdgesDowny), WALLWIDTH)
 
 
-def drawDoor(x, y, xstandart, ystandart, xmax, ymax):
-    if x == xmax - 1 or x == 0:
-        xCoord = (x + xstandart - 1) * BLOCKSIZE
-        yCoord = (y + ystandart - 1) * BLOCKSIZE + DOORINDENT
+def drawDoor(door):
+    x, y = (door.pos.x, door.pos.y)
+    if door.direction == LEFT or door.direction == RIGHT:
+        xCoord = x * BLOCKSIZE
+        yCoord = y * BLOCKSIZE + DOORINDENT
         drawLine(BROWN, (xCoord, yCoord), (xCoord + BLOCKSIZE, yCoord), WALLWIDTH)
         yCoord += WALLWIDTH
         drawLine(BGCOLOR, (xCoord, yCoord), (xCoord + BLOCKSIZE, yCoord), WALLWIDTH)
         yCoord += WALLWIDTH
         drawLine(BROWN, (xCoord, yCoord), (xCoord + BLOCKSIZE, yCoord), WALLWIDTH)
-    if y == ymax - 1 or y == 0:
-        xCoord = (x + xstandart - 1) * BLOCKSIZE + DOORINDENT
-        yCoord = (y + ystandart - 1) * BLOCKSIZE
-        drawLine(BROWN, (xCoord, yCoord), (xCoord, yCoord + BLOCKSIZE), WALLWIDTH)		
+    if door.direction == UP or door.direction == DOWN:
+        xCoord = x * BLOCKSIZE + DOORINDENT
+        yCoord = y * BLOCKSIZE
+        drawLine(BROWN, (xCoord, yCoord), (xCoord, yCoord + BLOCKSIZE), WALLWIDTH)
         xCoord += WALLWIDTH
         drawLine(BGCOLOR, (xCoord, yCoord), (xCoord, yCoord + BLOCKSIZE), WALLWIDTH)
         xCoord += WALLWIDTH
@@ -194,12 +193,13 @@ def drawDoor(x, y, xstandart, ystandart, xmax, ymax):
 def drawBackground():
     DISPLAYSURF.fill(BGCOLOR)
 
-			
+
 def load(path):
 	return pygame.image.load(path)
-	
+
 def setupPygame():
     global DISPLAYSURF, FPSCLOCK
+    print("set up!")
     pygame.init()
     DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
     pygame.display.set_caption("extrema")
@@ -211,6 +211,6 @@ def endFrame():
     FPSCLOCK.tick(FPS)
 
 def terminate():
-	
+
 	pygame.quit()
 	sys.exit()
