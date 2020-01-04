@@ -61,7 +61,13 @@ images = {"NONE" :  pygame.image.load(IMAGE_PATH + '/NoneA.png'),
     "IMPWARRIOR" :  pygame.image.load(IMAGE_PATH + '/KoboltB.png'),
     "SKELETON" :  pygame.image.load(IMAGE_PATH + '/Magic_effect3.png'),
     "ATTACKIMPACT" :  pygame.image.load(IMAGE_PATH + '/AttackPointA.png'),
-    "GRASS_1" :  pygame.image.load(IMAGE_PATH + 'Grass1.png')}
+    "GRASS_1" :  pygame.image.load(IMAGE_PATH + 'Grass1.png'),
+    "DUNGEON": pygame.image.load(IMAGE_PATH + 'Dungeon.png'),
+    "MOUNTAIN": pygame.image.load(IMAGE_PATH + 'Mountain2.png'),
+    "MOUNTAIN_1": pygame.image.load(IMAGE_PATH + 'Mountain1.png'),
+    "FOREST": pygame.image.load(IMAGE_PATH + 'Tree.png'),
+
+    "FOREST_1": pygame.image.load(IMAGE_PATH + 'Tree2.png')}
 
 #####################################################################
 # identifiers
