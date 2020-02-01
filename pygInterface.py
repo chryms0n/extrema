@@ -12,6 +12,7 @@ BLACK       = (  0,  0,  0)
 BLUE        = (  0,  0,255)
 RED         = (255,  0,  0)
 GREEN		= (  0,255,  0)
+YELLOW          = (180, 180, 0)
 BROWN       = (165, 42, 42)
 LIGHTGRAY   = (165,165,165)
 BGCOLOR = BLACK
@@ -81,6 +82,9 @@ DIRECTIONS = [RIGHT, UP, LEFT, DOWN]
 X = 0       # use it for tuples which
 Y = 1		# contain x, y coordinates
 
+def blockPos2PixelPos(blockposition):
+    return blockposition * BLOCKSIZE
+
 def drawLine(color, point1, point2, width=1):
     pygame.draw.line(DISPLAYSURF, color, point1, point2, width)
 
@@ -91,6 +95,9 @@ def drawRect(color, rect):
 def drawCircle(color, center, radius, width=1):
     pygame.draw.circle(DISPLAYSURF, color, center, radius, width)
 
+def paintBlock(blockpos, color=YELLOW):
+    pixelPos = blockPos2PixelPos(blockpos)
+    drawRect(color, (pixelPos.x, pixelPos.y, BLOCKSIZE, BLOCKSIZE))
 
 def drawGrid():
     for line in range(0, WINDOWHEIGHT, BLOCKSIZE):
@@ -125,7 +132,10 @@ def drawHallway(hallwayPart):
 
 def drawObject(obj):
     posi = (obj.position) * BLOCKSIZE
-    DISPLAYSURF.blit(images[obj.name], (posi.x, posi.y))
+    if obj.name in images:
+        DISPLAYSURF.blit(images[obj.name], (posi.x, posi.y))
+    else:
+        pass
 
 
 

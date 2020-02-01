@@ -53,20 +53,34 @@ def isDoor(position, doors):
     return None
 
 
-def isPassable(obj, direction, room):
-
-    if isinstance(room, Room):
-        nextField = util.getNextField(direction, obj.position)
-        if nextField in room.impassableObjs:
-            return False
-        else:
-            return True
-    else:
-        return True
 
 
 Door = namedtuple('Door', 'pos direction room')
 Hallway = namedtuple('Hallway', 'doors geometry')
+
+def imprintHallway(hallway, landscape):
+
+
+    for i in range(1, 1+len(hallway.geometry[1:len(hallway.geometry)-1])):
+
+        newBase0 = Object("HALLWAY", hallway.geometry[i][0])
+        newBase1 = Object("HALLWAY", hallway.geometry[i][1])
+        getAt(landscape, hallway.geometry[i][0]).base = newBase0
+        getAt(landscape, hallway.geometry[i][1]).base = newBase1
+
+    for i in range(len(hallway.geometry)):
+        point0 = hallway.geometry[i][0]
+        point1 = hallway.geometry[i][1]
+        deltaCurrent = point1 - point0
+        getAt(landscape, point0).base.movementOptions[util.getDirection(deltaCurrent)] = point1
+        getAt(landscape, point1).base.movementOptions[util.getDirection(deltaCurrent*(-1))] = point0
+
+
+class Tile:
+
+    def __init__(self, base, *objs):
+        self.base = base
+        self.objects = list(objs)
 
 
 class Object:
@@ -74,47 +88,33 @@ class Object:
     def __init__(self, name, position, moa = True):
 
         self.name = name
-        assert isinstance(position, pos)
 
         self.position = position
         self.moveable = moa # determines weather you can just walk over the object
 
-        self.movementOptions = None  # and the movingoptions in a hallway.
-
+        self.movementOptions = {UP: False , DOWN: False , LEFT: False , RIGHT: False}
 
     def __str__(self):
-        return ('%s Object at %s' % (self.name, self.position))
-    def __repr__(self):
-        return ('%s Object at %s' % (self.name, self.position))
+        return "[Name: {0}, at {1} is moveable ({2})]".format(self.name, self.position, self.moveable)
+
+
 
 
 
     #####################################################################
     # define basic inroom movement	
 
-def moveObject(obj, direction, room):
+def moveObject(obj, direction, room, level=None):
 
     # look where the next field lies, then look wether you can go there
-    nextField = util.getNextField(direction, obj.position)
-
-    if util.isClamped(nextField, room.origin, pos(room.width - 1, room.length -1) + room.origin) or isDoor(nextField, room.doors):
-        obj.position = util.getNextField(direction, obj.position)
-    if isDoor(nextField, room.doors):
-        print("There is a door")
-
-
-
+    if obj.movementOptions[direction]:
+            obj.position = obj.movementOptions[direction]
 
 	############################################################################	
 	# move the player	
 
 def movePlayer(obj, direction, room):
-    if isinstance(room, Room):
-        moveObject(obj, direction, room)
-
-    elif not isinstance(room, Room):
-        if obj.movementOptions[direction]:
-                obj.position = obj.movementOptions[direction]
+    moveObject(obj, direction, room)
 
 
 
@@ -127,6 +127,7 @@ def updatePositionalData(obj, level):
     def getCurrentHallway(hallways, position):
 
         hallwayNr = 0
+
         for hallway in hallways:
             hallwayPartNr = 0
             for hallwayPart in hallway.geometry:
@@ -134,16 +135,19 @@ def updatePositionalData(obj, level):
                     return hallways[hallwayNr]
                 hallwayPartNr += 1
             hallwayNr += 1
-    def getHallwayMovementOptions(hallway, position):
+    def getHallwayMovementOptions(hallway, position, movementOptions):
 
-        movementOptions = {UP: False , DOWN: False , LEFT: False , RIGHT: False}
-        for hallwayPart in hallway.geometry:
-            for pointNr in range(len(hallwayPart)):
-                if hallwayPart[pointNr] == position:
-                    otherPoint = hallwayPart[(pointNr+1)%2]
-                    direction = util.getDirection(otherPoint - position)
-                    movementOptions[direction] = otherPoint
+        hallwayMovementOption = getAt(level.landscape, obj.position).base.movementOptions
+        for k in hallwayMovementOption:
+            if (hallwayMovementOption[k]):
+                movementOptions[k] = hallwayMovementOption[k]
         return movementOptions
+
+    movementOptions = {UP: False , DOWN: False , LEFT: False , RIGHT: False}
+    for direction in DIRECTIONS:
+        if getAt(level.landscape, (util.getNextField(direction, obj.position))).base.moveable:
+            movementOptions[direction] = (util.getNextField(direction, obj.position));
+    obj.movementOptions = movementOptions
 
     # check weather the Hereo left the room
     room = level.currentRoom
@@ -152,25 +156,30 @@ def updatePositionalData(obj, level):
         # leaving the room
         level.currentRoom = getCurrentHallway([door.room for door in level.currentRoom.doors], obj.position)
         assert level.currentRoom
-        obj.movementOptions = getHallwayMovementOptions(level.currentRoom, obj.position)
+        obj.movementOptions = getHallwayMovementOptions(level.currentRoom, obj.position, movementOptions)
 
+    elif isinstance(room, Room):
+        if isDoor(obj.position, room.doors):
+            doorMovementOption = getAt(level.landscape, obj.position).base.movementOptions
+            for k in doorMovementOption:
+                if (doorMovementOption[k]):
+                    movementOptions[k] = doorMovementOption[k]
     elif not isinstance(room, Room):
-        obj.movementOptions = getHallwayMovementOptions(room, obj.position)
+        obj.movementOptions = getHallwayMovementOptions(room, obj.position, movementOptions)
         if isDoor(obj.position, room.doors):
             level.currentRoom = isDoor(obj.position, room.doors).room
             print("HABE RAUM BETRETEN")
-            print(level.currentRoom.attributeObjs)
+    print(obj.movementOptions)
 
 
 class Room:
 
-    def __init__(self, nr, x, y, rx, ry, wd, ln, doors): # constructor
+    def __init__(self, x = 0, y = 0, rx = 0, ry = 0, wd = LEVELWIDTH, ln = LEVELHEIGHT): # constructor
 
-        self.number = nr
         self.origin = pos(x, y)
         self.length = ln
         self.width = wd
-        self.doors = doors
+        self.doors = []
         self.hallways = {}
         self.size = pos(ln, wd)
 
@@ -179,19 +188,15 @@ class Room:
         self.monsters = []
         self.impassableObjs = []
 
-    def updateImpassableObjs(self):
-
-        self.impassableObjs = []
-        for piece in self.massObjs + self.monsters:
-                if not piece.moveable:
-                        self.impassableObjs.append(piece.position)
-
-    def returnMassObjectAt(self, coordX, coordY):
-
-        for obj in self.massObjs:
-                if (obj.positionX, obj.positionY) == (coordX, coordY):
-                        return obj
-
+    def imprintOnLandscape(self, landscape):
+        for i,j in itertools.product(range(self.width), range(self.length)):
+            position = pos(i, j) + self.origin
+            if util.isClamped(position, self.origin, pos(self.width, self.length) + self.origin - pos(1, 1)):
+                getAt(landscape, position).base = Object("FLOOR", position)
+            else:
+                getAt(landscape, position).base = Object("WALL", position, False)
+        for door in self.doors:
+            getAt(landscape, door.pos).base = Object("DOOR", door.pos)
 
     def __str__(self):
         return ('Room Object, pos = {0}, length = {1}, width = {2}'.format(self.origin, self.width, self.length))
@@ -199,7 +204,7 @@ class Room:
 
 class Level:
 
-    def __init__(self, nr, rowWidth, rowLength, missingRooms):
+    def __init__(self, nr, rowWidth = 3, rowLength = 3, missingRooms = 2):
 
         self.nr = nr
         self.roomRowWidth = rowWidth
@@ -208,19 +213,31 @@ class Level:
         self.roomRect = (int(LEVELWIDTH / self.roomRowWidth), int(LEVELHEIGHT / self.roomRowLength))
         self.roomtally = 0
 
-        self.allRooms = None
-        self.roomDescent = None
-        self.roomKlimb = None
-        self.allDoors = []
         self.rooms = []     # 2D array where the rooms are stored '[column, row]'
+        self.specialRooms = {}
         self.hallways = []
         self.currentRoom = None
+        self.landscape = [[Tile(Object("VOID", pos(i, j), False)) for i in range(LEVELHEIGHT)] for j in range(LEVELWIDTH)]
+        self.isLandscape = False
 
-        self.possibleContent = []
+        self.wayDown= None
+        self.wayUp= None
 
         self.build = False	# the actual levelproperties aren't created in the initializer butil.in an extra funktion.
                             # The 'build'-attributes determines weather this function has already been called on the levelobject.
 
+    def createLandscape(self):
+        for tileX, tileY in util.iter2DIndex(self.landscape):
+            tilePos = pos(tileX, tileY)
+            util.setAt(self.landscape, pos(tileX, tileY), Tile(Object("GRASS_1", pos(tileX, tileY))))
+            if ((tileX == 0 or tileY == 0) and ( (tileX - int(LEVELWIDTH / 2)) + (tileY - int(LEVELHEIGHT / 2)) < 10)):
+                util.getAt(self.landscape, pos(tileX, tileY)).base = Object("MOUNTAIN_1", pos(tileX, tileY))
+        dungeonPos = (pos(LEVELWIDTH, LEVELHEIGHT) / 2).toInt()
+        dungeonEntry = Object(LADDER_DOWN, dungeonPos)
+        getAt(self.landscape, dungeonPos).objects.append(dungeonEntry)
+        self.specialRooms[LADDER_DOWN] = Room()
+        self.specialRooms[LADDER_DOWN].attributeObjs[LADDER_DOWN] = dungeonEntry
+        self.isLandscape = True
 
     def create(self):
         # TODO: build a new level from scratch based on the code on the beginning of the main game loop.
@@ -236,8 +253,9 @@ class Level:
                 yCoord_Room = rectRow * self.roomRect[Y] + random.randint(2, int(self.roomRect[Y] / 3))
                 roomWidth = random.randint(5, self.roomRect[X] - (xCoord_Room - rectColumn * self.roomRect[X]) - 1)
                 roomLength = random.randint(4, int(self.roomRect[Y] * 2 / 3))
-                currentRoom = Room(roomNr + 1, xCoord_Room, yCoord_Room, rectColumn, rectRow, roomWidth, roomLength, [])
+                currentRoom = Room(xCoord_Room, yCoord_Room, rectColumn, rectRow, roomWidth, roomLength)
                 self.rooms[rectColumn].append(currentRoom)
+                currentRoom.imprintOnLandscape(self.landscape)
                 roomNr += 1
 
         # deleting a few rooms
@@ -259,7 +277,7 @@ class Level:
         visited = [[False for i in range(self.roomRowLength)] for i in range(self.roomRowWidth)]
         # creating doors
         # TODO: Implement range() for loops instead of 'roomRectX' variables
-        for roomRectX, roomRectY, direction in itertools.product(range(rectRow), range(rectColumn), DIRECTIONS):
+        for roomRectX, roomRectY, direction in itertools.product(range(self.roomRowLength), range(self.roomRowWidth), DIRECTIONS):
             roomPos = pos(roomRectX, roomRectY)
             setAt(visited, roomPos, True)
             otherDirection = util.getOppositeDirection(direction)
@@ -268,7 +286,6 @@ class Level:
             otherRoomPos = roomPos + directionVector
             room = rooms[roomRectX][roomRectY]
             if util.isInBounds(rooms, otherRoomPos) and room and getAt(rooms, otherRoomPos) and not getAt(visited, otherRoomPos):
-                print(roomPos, otherRoomPos)
                 otherRoom = rooms[otherRoomPos.x][otherRoomPos.y]
                 radial = pos(
                     (room.width-1)*int((directionVector.x+1)*0.5), 
@@ -305,42 +322,47 @@ class Level:
                 newHallway = Hallway((Door(CoordDoor1, direction, room), Door(CoordDoor2, otherDirection, otherRoom)), newHallwayGeo)
                 self.hallways.append(newHallway)
 
-
+                # Tell the rooms about there new doors
                 room.doors.append(Door(CoordDoor1, direction, newHallway))
                 otherRoom.doors.append(Door(CoordDoor2, otherDirection, newHallway))
-                # Tell the rooms about there new doors
 
+                room.imprintOnLandscape(self.landscape)
+                otherRoom.imprintOnLandscape(self.landscape)
+                imprintHallway(newHallway, self.landscape)
 
         ####################################################################################
         # Set up the player, monsters and other things in the rooms 		
 
 
         # put objects and enemies into rooms
-        possibleContent = util.shuffle(['start', 'exit', 'heaven'] + ['treasure' for i in range(self.roomtally - 3)])
+        content = util.shuffle(['start', 'exit', 'heaven'] + ['treasure' for i in range(self.roomtally - 3)])
 
-        self.possibleContent = (item for item in possibleContent)
-        for column in self.rooms:
-            for room in column:
-                if room:
-                    item = next(self.possibleContent)
-                    if item == 'start':
-                        if self.nr > 0:
-                            room.attributeObjs[LADDER_UP] = Object(LADDER_UP, randomPositionIn(room))
-                        self.roomKlimb = room
-                    elif item == 'exit' and self.nr < LEVELTALLY - 1:
-                        room.attributeObjs[LADDER_DOWN] = Object(LADDER_DOWN, randomPositionIn(room))
-                        self.roomDescent = room
-                    elif item == 'heaven':
-                        room.attributeObjs[FOUNTAIN] = Object(FOUNTAIN, randomPositionIn(room))
-                    elif item == 'treasure':
-                        room.massObjs.append(Object(TREASURE, randomPositionIn(room)))
-                    if not item in ['start', 'exit', 'heaven']:
-                        room.monsters.append(Object(IMPWARRIOR, randomPositionIn(room)))
+        possibleContent = (item for item in content)
+        for room in util.iter2D(self.rooms):
+            if room:
+                item = next(possibleContent)
+                if item == 'start':
+                    room.attributeObjs[LADDER_UP] = Object(LADDER_UP, randomPositionIn(room))
+                    self.specialRooms[LADDER_UP]= room
+                elif item == 'exit' and self.nr < LEVELTALLY - 1:
+                    room.attributeObjs[LADDER_DOWN] = Object(LADDER_DOWN, randomPositionIn(room))
+                    self.specialRooms[LADDER_DOWN] = room
+                elif item == 'heaven':
+                    room.attributeObjs[FOUNTAIN] = Object(FOUNTAIN, randomPositionIn(room))
+                elif item == 'treasure':
+                    room.massObjs.append(Object(TREASURE, randomPositionIn(room)))
+                if not item in ['start', 'exit', 'heaven']:
+                    room.monsters.append(Object(IMPWARRIOR, randomPositionIn(room)))
 
         print("LEVELNUMBER", self.nr)
 
         # finish the level
         self.build = True
+
+    def giveInfoOn(self, position):
+        return "base: {0}, object: {1}".format(getAt(self.landscape, position).base, getAt(self.landscape, position).objects)
+
+
 
 
     def dismantle(self):
@@ -353,13 +375,17 @@ class Level:
 
 def createWorld():
     levels = [Level(levelnr, 3, 3, 2) for levelnr in range(9)]
+    for levelIndex in range(len(levels)-1):
+        levels[levelIndex].roomDescent.attributeObjs[LADDER_DOWN].nextLevel = levels[levelIndex+1]
+
+
     return levels
 
-def changeLevel(levelNr, levels):
-    level = levels[levelNr]
-    if not level.build:
+
+def changeLevel(newLevel, oldLevel):
+    if not newLevel.build:
             level.create()
-    level.currentRoom = level.roomKlimb
+    oldlevel.currentRoom.attributeObjs[LADDER_DOWN].startRoom = newLevel.specialRooms[LADDER_UP]
     return level
 
 if __name__ == '__main__':

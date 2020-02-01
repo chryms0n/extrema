@@ -1,12 +1,7 @@
 #! python3
 # extrema - a simple roguelike dungeoncrawler
-# last changes:	-added TODOs to enemy AI and level methods
-#				-simplefied and abbrevieted the code to place the player, objs, etc... to rooms
-#				-made long parameter lists more confortable
-#				-renamed the player images
-#				-created the levels-list with list-comprehensions
-
-
+# last changes:	
+#               
 import pygame, random, copy, time, logging, pygInterface as pyIF, utility as util, world
 from pygame.locals import *
 from utility import pos
@@ -31,6 +26,7 @@ PERPENDICULAR = 'perpendidular'
 
 MOVING = 'moving'
 ATTACKING = 'attacking'
+LOOKING = 'looking'
 
 X = 0       # use it for tuples which
 Y = 1		# contain x, y coordinates
@@ -51,16 +47,40 @@ def main():
     lvlchange = 0
     mpo = 1		# movement priority order
     actionMode = MOVING
-    direction = None
     intendedDirection = False
     objects = []		# objects in the players room
     monsters = []		# monsters in the players room
     roomfilled = True	# determines weather monster and objects are spawned in the current room
     currentLevelNr = 0
+    isLandscape = False
 
 
-    levels = world.createWorld()
-    level = world.changeLevel(currentLevelNr, levels)
+    levels = [world.Level(levelnr, 3, 3, 2) for levelnr in range(9)]
+    overworld = world.Level(11)
+    overworld.createLandscape()
+    level = overworld
+    for i in range(len(levels)):
+        oldLevel = level
+        level = levels[i]
+        level.create()
+        level.currentRoom = level.specialRooms[world.LADDER_UP]
+        room = level.currentRoom
+        print(i)
+
+        if i != 0:
+            oldRoom = oldLevel.specialRooms[world.LADDER_DOWN]
+            exitPoint = oldRoom.attributeObjs[world.LADDER_DOWN]
+        else:
+            exitPoint = overworld.specialRooms[world.LADDER_DOWN].attributeObjs[world.LADDER_DOWN]
+        entryPoint = room.attributeObjs[world.LADDER_UP]
+        exitPoint.startRoom = level.specialRooms[world.LADDER_UP]
+        exitPoint.otherEnd = entryPoint
+        exitPoint.nextLevel = level
+        entryPoint.otherEnd = exitPoint
+        entryPoint.nextLevel = oldLevel
+
+    level = levels[0]
+
 
     player = world.Object(world.PLAYER, world.randomPositionIn(level.currentRoom), False)
     print()
@@ -78,7 +98,7 @@ def main():
         # update gamestate #####################################################
         ########################################################################
 
-
+        direction = None
         for event in pygame.event.get():
             if event.type == QUIT:
                     pyIF.terminate()
@@ -112,7 +132,12 @@ def main():
                         entry = world.LADDER_UP
                         ext = world.LADDER_DOWN
                         lvlchange = 1
-                    if (not (ext in room.attributeObjs)) or player.position != room.attributeObjs[ext].position:
+                    if (ext in room.attributeObjs) and player.position == room.attributeObjs[ext].position:
+                        exitPoint = room.attributeObjs[ext]
+                        level = exitPoint.nextLevel
+                        level.currentRoom = level.specialRooms[entry]
+                        player.position = exitPoint.otherEnd.position
+                    else:
                         print((not (ext in room.attributeObjs)))
                         print("Attribute Objs", *[obj for key, obj in room.attributeObjs.items()])
                         try:
@@ -121,17 +146,21 @@ def main():
                             pass
                         print("Player Position at {0}".format(player.position))
                         print('No ladder')
-                    else:
-                        currentLevelNr += lvlchange
-                        level = world.changeLevel(currentLevelNr, levels)
-                        level.currentRoom = [room for column in level.rooms for room in column if room and entry in room.attributeObjs][0]
-                        player.position = level.currentRoom.attributeObjs[entry].position
 
-                if direction != NONE and world.isPassable(player, direction, level.currentRoom):
+                elif event.key == K_l:
+                    actionMode = LOOKING
+
+                if actionMode == MOVING and direction != NONE:
+                    world.updatePositionalData(player, level)	# gets hallway moving options as well as the overall position when leaving a room
                     world.movePlayer(player, direction, level.currentRoom)
 
                     direction = None
                     moved = True
+
+                elif actionMode == LOOKING and direction != None:
+                    print("Looking at {0}".format(level.giveInfoOn(util.toPosition(direction)+player.position)))
+                    actionMode =  MOVING
+
 
                 elif actionMode == ATTACKING:
                     print('attack')
@@ -139,7 +168,6 @@ def main():
 
                 if moved:
 
-                    world.updatePositionalData(player, level)	# gets hallway moving options as well as the overall position when leaving a room
 
                     #######################################################
                     # spawning and deleting enemies and treasures when entering/leaving a room
@@ -165,25 +193,35 @@ def main():
                             # TODO: build a simple fighting AI
 
                     moved = False
-                    if isinstance(level.currentRoom, world.Room):
-                        level.currentRoom.updateImpassableObjs()
 
                     ###########################################################
                     # space for console commentary
 
         pyIF.drawBackground()
         pyIF.drawGrid()
-        for hallway in level.hallways:
-            for i in range(len(hallway.geometry) - 2):
-                hallwayPartNr = i + 1
-                pyIF.drawHallway(hallway.geometry[hallwayPartNr])
-        for i in range(level.roomRowWidth):
-            for r in level.rooms[i]:
+        if level.isLandscape:
+
+            for tile in util.iter2D(level.landscape):
+                if tile.objects:
+                    pyIF.drawObject(tile.objects[0])
+                else:
+                    pyIF.drawObject(tile.base)
+        else:
+            for hallway in level.hallways:
+                for i in range(len(hallway.geometry) - 2):
+                    hallwayPartNr = i + 1
+                    pyIF.drawHallway(hallway.geometry[hallwayPartNr])
+            for r in util.iter2D(level.rooms):
                 if r:	# check weather there is a room to draw
                     pyIF.drawRoom(r)
                     pyIF.drawRoomContent(r)
+
         for monster in monsters:
             pyIF.drawObject(monster)
+#        for x in range(len(level.landscape)):
+#            for y in range(len(level.landscape[x])):
+#                if not level.landscape[x][y].base.moveable:
+#                    pyIF.paintBlock(pos(x, y))
         pyIF.drawObject(player)
         pyIF.endFrame()
 

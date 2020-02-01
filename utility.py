@@ -57,8 +57,8 @@ class pos:
         return self.__mul__(scalar)
 
     def __truediv__(self, scalar):
-        p = pos(self.x / scalar, self.y / scalar)
-        assert p is pos
+        p = pos((self.x / scalar), (self.y / scalar))
+        print(type(p))
         return p
 
     def __str__(self):
@@ -136,6 +136,12 @@ def isInBounds(arr, pos):
         return False
     except AssertionError:
         return False
+
+def iter2D(arr):
+    return (element for subarr in arr for element in subarr)
+
+def iter2DIndex(arr):
+    return ((i, j) for i in range(len(arr)) for j in range(len(arr[i])))
 
 
 if __name__=='__main__':
